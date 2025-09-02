@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🌍 CMAT Tool</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+  <!-- Navbar -->
+  <div class="nav-container">
+    <a href="/">🏠 Home</a>
+    {% if logged_in %}
+      <a href="#" onclick="showPage('upload')">📑 Upload Document</a>
+      <a href="#" onclick="showPage('survey')">📝 Indicators Survey</a>
+      <a href="/logout">🚪 Logout</a>
+      <span>Logged in as: {{ user }}</span>
+    {% else %}
+      <a href="/login">🔐 Login</a>
+    {% endif %}
+  </div>
+
+  <!-- Header -->
+  <div class="top-header">
+    <div class="header-left">
+      <h2>🌍 Climate Monitoring & Accountability Tool (CMAT)</h2>
+      <p>AI-enabled oversight tool for Zambia’s National Assembly</p>
+    </div>
+    <div class="header-right">
+      {% if logged_in %}
+        Logged in as: <strong>{{ user }}</strong>
+      {% else %}
+        Not logged in
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Dynamic Content -->
+  <div class="content">
+    {% if page == "home" %}
+      <h3>Welcome to CMAT</h3>
+      <p>This tool supports parliamentary oversight of climate action by monitoring key indicators.</p>
+      <div id="slideshow">
+        <!-- Slideshow injected with JS -->
+      </div>
+    {% elif page == "login" %}
+      <h3>Login / Sign Up</h3>
+      {% if error %}<p style="color:red;">{{ error }}</p>{% endif %}
+      {% if message %}<p style="color:green;">{{ message }}</p>{% endif %}
+      <form method="post" action="/login">
+        <input type="text" name="username" placeholder="Username" required><br>
+        <input type="password" name="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+      </form>
+      <h4>Or Sign Up</h4>
+      <form method="post" action="/signup">
+        <input type="text" name="username" placeholder="New Username" required><br>
+        <input type="password" name="password" placeholder="New Password" required><br>
+        <button type="submit">Sign Up</button>
+      </form>
+    {% endif %}
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-container">
+      <div class="footer-section">
+        <h4>About CMAT</h4>
+        <p>🌍 Supports Zambia’s climate action oversight by tracking projects, budgets, and impact.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="#">Projects</a></li>
+          <li><a href="#">Reports</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Contact</h4>
+        <p>Email: info@agneafrica.org</p>
+        <p>📍 Blue Violet Plaza, Kilimani</p>
+        <div class="social-icons">
+          <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" width="20"/></a>
+          <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" width="20"/></a>
+          <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" width="20"/></a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 CMAT | Built with ❤️ by AGNES</p>
+    </div>
+  </div>
+</body>
+</html>

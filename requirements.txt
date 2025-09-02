@@ -1,0 +1,8 @@
+flask
+pandas
+PyMuPDF
+plotly
+numpy
+requests
+matplotlib
+scikit-learn
