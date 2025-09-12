@@ -1,111 +1,101 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from backend import (
-    CMAT_INDICATORS,
-    extract_text_from_pdf,
-    extract_numbers_from_text,
-    bar_chart,
-    radar_chart,
-    extract_agriculture_budget,
-    agriculture_bar_chart,
-    extract_climate_programmes,
-    climate_bar_chart,
-    extract_total_budget,
-    climate_multi_year_chart,
-    climate_2024_vs_total_chart
-)
-import os, json
-import plotly.io as pio
+from flask import Flask, render_template, request, jsonify, session, redirect, flash
+import backend
 
 app = Flask(__name__)
-app.secret_key = "super-secret-key"
-USER_FILE = "users.json"
+app.secret_key = "supersecretkey"  # change to env variable in production
 
-# ---------------- User Helpers ----------------
-def load_users():
-    return json.load(open(USER_FILE)) if os.path.exists(USER_FILE) else {"admin": "admin"}
-
-def save_users(users):
-    json.dump(users, open(USER_FILE, "w"))
-
-# ---------------- Routes ----------------
+# ------------------ NAVIGATION ROUTES ------------------
 @app.route("/")
 def home():
-    return render_template("index.html", page="home", logged_in=session.get("logged_in", False), user=session.get("current_user"))
+    return render_template("index.html", page="home")
+
+@app.route("/about")
+def about():
+    return render_template("index.html", page="about")
+
+@app.route("/upload", methods=["GET"])
+def upload_page():
+    if "user" not in session:
+        return redirect("/login")
+    return render_template("index.html", page="upload")
+
+@app.route("/survey")
+def survey():
+    if "user" not in session:
+        return redirect("/login")
+    return render_template("index.html", page="survey")
+
+# ------------------ AUTH ROUTES ------------------
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if backend.create_user(username, password):
+            session["user"] = username
+            flash("Signup successful! You are now logged in.", "success")
+            return redirect("/")
+        else:
+            flash("Username already exists.", "error")
+            return render_template("index.html", page="signup")
+    return render_template("index.html", page="signup")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    users = load_users()
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        if username in users and users[username] == password:
-            session["logged_in"] = True
-            session["current_user"] = username
-            return redirect(url_for("home"))
-        return render_template("index.html", page="login", error="Invalid credentials")
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if backend.verify_user(username, password):
+            session["user"] = username
+            flash("Login successful!", "success")
+            return redirect("/")
+        else:
+            flash("Invalid credentials.", "error")
+            return render_template("index.html", page="login")
     return render_template("index.html", page="login")
 
-@app.route("/signup", methods=["POST"])
-def signup():
-    users = load_users()
-    username = request.form["username"]
-    password = request.form["password"]
-    if username in users:
-        return render_template("index.html", page="login", error="⚠️ Username exists")
-    users[username] = password
-    save_users(users)
-    return render_template("index.html", page="login", message="✅ Account created. Please log in.")
 
 @app.route("/logout")
 def logout():
-    session.clear()
-    return redirect(url_for("home"))
+    session.pop("user", None)
+    return redirect("/")
 
+# ------------------ API: FILE UPLOAD ------------------
 @app.route("/upload", methods=["POST"])
 def upload():
     if "pdf" not in request.files:
-        return jsonify({"error": "No file uploaded"})
+        return jsonify({"error": "No file uploaded"}), 400
+
     file = request.files["pdf"]
-    text = extract_text_from_pdf(file, max_pages=10)
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
 
-    # Data extraction
-    climate_df = extract_climate_programmes(text)
-    total_budget = extract_total_budget(text)
-    agriculture_df, totals = extract_agriculture_budget(text)
-    extracted = extract_numbers_from_text(text)
+    # Extract text from PDF
+    text = backend.extract_text_from_pdf(file)
 
-    # Convert charts to JSON for rendering with Plotly.js
-    charts = {}
-    if climate_df is not None:
-        charts["climate_multi"] = pio.to_json(climate_multi_year_chart(climate_df, total_budget=total_budget))
-        charts["climate_vs_total"] = pio.to_json(climate_2024_vs_total_chart(climate_df, total_budget=total_budget))
-    if agriculture_df is not None:
-        charts["agriculture"] = pio.to_json(agriculture_bar_chart(agriculture_df, totals, year=2024))
-    if extracted:
-        numeric_results = {k: v for k, v in extracted.items() if isinstance(v, (int, float))}
-        if numeric_results:
-            charts["bar"] = pio.to_json(bar_chart(numeric_results, "Budget Indicators"))
-            charts["radar"] = pio.to_json(radar_chart(numeric_results, "Composite View"))
+    # Extract budgets (combined)
+    budget_info = backend.extract_combined_budget_info(text)
 
-    return jsonify({
-        "text": text[:3000],
-        "climate": climate_df.to_dict(orient="records") if climate_df is not None else None,
+    # Extract agriculture budget
+    agri_df, agri_totals = backend.extract_agriculture_budget(text)
+
+    # Extract climate programmes
+    climate_df = backend.extract_climate_programmes(text)
+
+    # Extract total budget
+    total_budget = backend.extract_total_budget(text)
+
+    response = {
+        "budget_info": budget_info,
+        "agriculture": agri_df.to_dict(orient="records") if agri_df is not None else None,
+        "agriculture_totals": agri_totals,
+        "climate_programmes": climate_df.to_dict(orient="records") if climate_df is not None else None,
         "total_budget": total_budget,
-        "agriculture": agriculture_df.to_dict(orient="records") if agriculture_df is not None else None,
-        "agriculture_totals": totals,
-        "extracted": extracted,
-        "charts": charts
-    })
+    }
 
-@app.route("/survey", methods=["POST"])
-def survey():
-    results = request.json
-    numeric_results = {k: float(v) for k, v in results.items() if v}
-    charts = {}
-    if numeric_results:
-        charts["bar"] = pio.to_json(bar_chart(numeric_results, "Indicator Values"))
-        charts["radar"] = pio.to_json(radar_chart(numeric_results, "Composite View"))
-    return jsonify({"charts": charts})
+    return jsonify(response)
 
+# ------------------ RUN APP ------------------
 if __name__ == "__main__":
     app.run(debug=True)

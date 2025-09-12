@@ -1,8 +1,59 @@
 import fitz  # PyMuPDF
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import re
+import json
+import os
+from dotenv import load_dotenv
+from openai import OpenAI, RateLimitError, AuthenticationError
+import sqlite3
+from flask_bcrypt import Bcrypt
+
+bcrypt = Bcrypt()
+
+DB_PATH = "cmat.db"
+
+def init_db():
+    """Initialize SQLite database with users table if not exists."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def create_user(username, password):
+    """Register a new user with hashed password."""
+    hashed = bcrypt.generate_password_hash(password).decode("utf-8")
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        return False  # username exists
+
+def verify_user(username, password):
+    """Check username + password against DB."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT password FROM users WHERE username = ?", (username,))
+    row = c.fetchone()
+    conn.close()
+    if row and bcrypt.check_password_hash(row[0], password):
+        return True
+    return False
+
+# Load environment variables
+load_dotenv()
+print("DEBUG: OPENAI_API_KEY_1 loaded?", bool(os.getenv("OPENAI_API_KEY_1")))
+print("DEBUG: OPENAI_API_KEY_2 loaded?", bool(os.getenv("OPENAI_API_KEY_2")))
 
 # ---- CMAT Indicators ----
 CMAT_INDICATORS = {
@@ -10,8 +61,34 @@ CMAT_INDICATORS = {
     "Sectors": ["Energy", "Agriculture", "Health", "Transport", "Water"],
 }
 
+# ---- OpenAI Client Setup ----
+API_KEYS = [
+    os.getenv("OPENAI_API_KEY_1"),
+    os.getenv("OPENAI_API_KEY_2")
+]
+
+current_key_index = 0
+client = OpenAI(api_key=API_KEYS[current_key_index])
+
+def get_client():
+    """
+    Returns a working OpenAI client.
+    If quota/auth errors happen, rotate to the next key.
+    """
+    global client, current_key_index
+    try:
+        return client
+    except (RateLimitError, AuthenticationError):
+        current_key_index = (current_key_index + 1) % len(API_KEYS)
+        client = OpenAI(api_key=API_KEYS[current_key_index])
+        print(f"⚠️ Switched to backup key #{current_key_index+1}")
+        return client
+
 # ---- PDF Extraction ----
 def extract_text_from_pdf(uploaded_file, max_pages=None):
+    """
+    Extracts raw text from a PDF file object.
+    """
     text = []
     with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
         for page_num, page in enumerate(doc):
@@ -20,11 +97,86 @@ def extract_text_from_pdf(uploaded_file, max_pages=None):
             text.append(page.get_text("text") or "")
     return "\n".join(text)
 
-# ---- Agriculture Budget Extraction ----
+# ---- AI Extraction ----
+def ai_extract_budget_info(text: str):
+    """
+    Uses GPT to analyze PDF text and extract structured budget data.
+    """
+    prompt = f"""
+    You are a financial data analyst. Extract budget allocations for climate-related programmes
+    (Energy, Agriculture, Health, Transport, Water, and total budget).
+    Return results as a clean JSON object with numeric values only.
+    Text: {text[:3000]}
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a financial data analyst."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0
+        )
+        content = response.choices[0].message["content"]
+        return json.loads(content)
+    except Exception as e:
+        print("AI extraction failed:", e)
+        return {}
+
+# ---- Helper: Clean numbers ----
+def clean_numeric_value(val):
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, str):
+        cleaned = re.sub(r"[^\d\.\-]", "", val)
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+    return None
+
+# ---- Combined AI + Keyword Extraction ----
+def extract_combined_budget_info(text: str):
+    ai_results = ai_extract_budget_info(text) or {}
+    keyword_results = extract_numbers_from_text(
+        text,
+        keywords=[
+            "total public investment in climate initiatives",
+            "percentage of national budget allocated to climate adaptation",
+            "private sector investment mobilized", 
+            "energy", "agriculture", "health", "transport", "water"
+        ]
+    )
+
+    merged = ai_results.copy()
+    mapping = {
+        "total": "Total Budget",
+        "adaptation": "Adaptation",
+        "public": "Public",
+        "energy": "Energy",
+        "agriculture": "Agriculture",
+        "health": "Health",
+        "transport": "Transport",
+        "water": "Water"
+    }
+
+    for k, v in keyword_results.items():
+        clean_key = k.lower().strip()
+        mapped_key = None
+        for kw, label in mapping.items():
+            if kw in clean_key:
+                mapped_key = label
+                break
+        if mapped_key and mapped_key not in merged:
+            merged[mapped_key] = v
+
+    merged = {k: clean_numeric_value(v) for k, v in merged.items() if v is not None}
+    return merged
+
+# ---- Agriculture Budget ----
 def extract_agriculture_budget(text: str):
-    """
-    Extracts agriculture budget lines from text and returns DataFrame + totals.
-    """
     rows = []
     pattern = re.compile(
         r"(?P<programme>[A-Za-z\s\-\(\)]+)\s+\d+\s+(?P<budget2024>[\d,]+)\s+(?P<budget2023>[\d,]+)\s+(?P<budget2022>[\d,]+)"
@@ -47,45 +199,53 @@ def extract_agriculture_budget(text: str):
     totals = df[["2022", "2023", "2024"]].sum().to_dict()
     return df, totals
 
-def agriculture_bar_chart(df, totals, year=2024):
-    """
-    Simple bar chart for agriculture programmes in a given year.
-    """
-    fig = px.bar(
-        df,
-        x="Programme",
-        y=str(year),
-        title=f"Agriculture Budget {year}",
-        text=str(year),
-        template="plotly_white"
-    )
-    fig.update_traces(texttemplate="%{text}", textposition="outside")
-    fig.update_layout(margin=dict(t=60, r=20, l=20, b=40))
-    return fig
+# ---- Climate Programmes ----
+def extract_climate_programmes(text: str):
+    rows = []
+    climate_codes = {
+        "07": "Irrigation Development",
+        "17": "Irrigation Development Support Programme",
+        "18": "Farming Systems / SCRALA",
+        "41": "Chiansi Water Development Project",
+        "61": "Programme for Adaptation of Climate Change (PIDACC) Zambezi",
+    }
+
+    clean_text = re.sub(r"\s+", " ", text)
+
+    for code, name in climate_codes.items():
+        pattern = re.compile(rf"\b{code}\b\s+([\d,]+)\s+([\d,]+).*?([\d,]+)")
+        match = pattern.search(clean_text)
+        if match:
+            try:
+                budget2022 = float(match.group(1).replace(",", ""))
+                budget2023 = float(match.group(2).replace(",", ""))
+                budget2024 = float(match.group(3).replace(",", ""))
+            except ValueError:
+                continue
+
+            rows.append({
+                "Programme": f"{code} - {name}",
+                "2023": budget2023,
+                "2024": budget2024
+            })
+
+    df = pd.DataFrame(rows)
+    return df if not df.empty else None
+
+def extract_total_budget(text: str):
+    # look for "Total" followed by digits (ignore if no number)
+    pattern = re.compile(r"Total[^0-9]*([\d,]+)", re.IGNORECASE)
+    matches = pattern.findall(text)
+    numbers = []
+    for m in matches:
+        try:
+            numbers.append(float(m.replace(",", "")))
+        except ValueError:
+            continue
+    return max(numbers) if numbers else None
 
 
-# ---- Generic Charts ----
-def bar_chart(data_dict, title):
-    df = pd.DataFrame({"Indicator": list(data_dict.keys()), "Value": list(data_dict.values())})
-    fig = px.bar(df, x="Indicator", y="Value", text="Value", title=title, template="plotly_white")
-    fig.update_traces(texttemplate="%{text}", textposition="outside")
-    fig.update_layout(margin=dict(t=60, r=20, l=20, b=40))
-    return fig
-
-def radar_chart(data_dict, title):
-    indicators = list(data_dict.keys())
-    values = list(data_dict.values())
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(r=values, theta=indicators, fill="toself", name="Indicators"))
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True)),
-        showlegend=False,
-        title=title,
-        template="plotly_white"
-    )
-    return fig
-
-# ---- Extract Numeric Values ----
+# ---- Simple Number Extractor ----
 def extract_numbers_from_text(text, keywords=None):
     results = {}
     if not text:
@@ -106,299 +266,6 @@ def extract_numbers_from_text(text, keywords=None):
                 results[key] = None
     return results
 
-# ---- Map Extracted Values to Survey Defaults ----
-def prepare_survey_defaults(extracted_numbers):
-    return {
-        "total_budget": extracted_numbers.get("total budget", None),
-        "public": extracted_numbers.get("public", None),
-        "adaptation": extracted_numbers.get("adaptation", None),
-        "mitigation": extracted_numbers.get("mitigation", None),
-    }
+# Initialize DB on startup
+init_db()
 
-# ---- Percentage Calculations ----
-def calc_percentages(total_budget: float, public: float, adaptation: float, mitigation: float):
-    total_budget = float(total_budget or 0)
-    public = float(public or 0)
-    adaptation = float(adaptation or 0)
-    mitigation = float(mitigation or 0)
-
-    if total_budget <= 0:
-        return [0.0, 0.0, 0.0]
-
-    vals = [public, adaptation, mitigation]
-    return [(v / total_budget) * 100 for v in vals]
-
-# ---- Simple Bar Chart ----
-def bar_chart(data_dict, title):
-    df = pd.DataFrame({"Indicator": list(data_dict.keys()), "Value": list(data_dict.values())})
-    fig = px.bar(df, x="Indicator", y="Value", text="Value", title=title, template="plotly_white")
-    fig.update_traces(texttemplate="%{text}", textposition="outside")
-    fig.update_layout(margin=dict(t=60, r=20, l=20, b=40))
-    return fig
-
-# ---- Radar Chart ----
-def radar_chart(data_dict, title):
-    indicators = list(data_dict.keys())
-    values = list(data_dict.values())
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(r=values, theta=indicators, fill="toself", name="Indicators"))
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True)),
-        showlegend=False,
-        title=title,
-        template="plotly_white"
-    )
-    return fig
-
-# ---- Bar Chart with Country Targets ----
-def bar_percent_chart(labels, percentages, title, country="Default"):
-    thresholds = COUNTRY_THRESHOLDS.get(country, DEFAULT_THRESHOLDS)
-
-    df = pd.DataFrame({"Indicator": labels, "Percent": [round(p, 2) for p in percentages]})
-
-    colors = []
-    for label, val in zip(df["Indicator"], df["Percent"]):
-        threshold = thresholds.get(label, None)
-        if threshold is not None:
-            colors.append("green" if val >= threshold else "red")
-        else:
-            colors.append("gray")
-
-    top = max([0] + percentages)
-    max_y = 100 if top <= 100 else min(120, top + 10)
-
-    fig = px.bar(df, x="Indicator", y="Percent", text="Percent", color=colors, color_discrete_map="identity")
-    fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-    fig.update_layout(
-        title=title,
-        yaxis_title="Percentage of Total Budget (%)",
-        xaxis_title="",
-        template="plotly_white",
-        margin=dict(t=60, r=20, l=20, b=40),
-        showlegend=False
-    )
-    fig.update_yaxes(range=[0, max_y])
-    return fig
-
-
-def extract_climate_programmes(text: str):
-    """
-    Extracts 2023 and 2024 budget allocations for climate-related programmes
-    (07, 17, 18, 41, 61).
-    Handles line breaks and ensures correct year mapping.
-    """
-    rows = []
-    climate_codes = {
-        "07": "Irrigation Development",
-        "17": "Irrigation Development Support Programme",
-        "18": "Farming Systems / SCRALA",
-        "41": "Chiansi Water Development Project",
-        "61": "Programme for Adaptation of Climate Change (PIDACC) Zambezi",
-    }
-
-    # Normalize text: collapse multiple spaces and join broken lines
-    clean_text = re.sub(r"\s+", " ", text)
-
-    for code, name in climate_codes.items():
-        # Look for the programme code followed by at least 3 numbers on the same logical line
-        pattern = re.compile(rf"\b{code}\b\s+([\d,]+)\s+([\d,]+).*?([\d,]+)")
-        match = pattern.search(clean_text)
-        if match:
-            try:
-                budget2022 = float(match.group(1).replace(",", ""))
-                budget2023 = float(match.group(2).replace(",", ""))
-                budget2024 = float(match.group(3).replace(",", ""))
-            except ValueError:
-                continue
-
-            rows.append({
-                "Programme": f"{code} - {name}",
-                "2023": budget2023,
-                "2024": budget2024
-            })
-
-    df = pd.DataFrame(rows)
-    return df if not df.empty else None
-
-
-def extract_total_budget(text: str):
-    """
-    Extracts the overall total 2024 budget value.
-    Looks for the biggest number near the word 'Total'.
-    """
-    pattern = re.compile(r"Total.*?([\d,]+)", re.IGNORECASE)
-    matches = pattern.findall(text)
-    if matches:
-        # take the largest number (total is usually the biggest figure)
-        numbers = [float(m.replace(",", "")) for m in matches]
-        return max(numbers)
-    return None
-
-
-def climate_bar_chart(df, total_budget=None):
-    """
-    Bar chart for climate programmes (2023 vs 2024 budgets).
-    If total_budget is provided, also show % share.
-    """
-    melted = df.melt(id_vars=["Programme"], value_vars=["2023", "2024"], var_name="Year", value_name="Budget")
-
-    fig = px.bar(
-        melted,
-        x="Programme",
-        y="Budget",
-        color="Year",
-        barmode="group",
-        text="Budget",
-        title="🌍 Climate-Tagged Programmes Budget (2023 vs 2024)",
-        template="plotly_white"
-    )
-    fig.update_traces(texttemplate="%{text}", textposition="outside")
-    fig.update_layout(margin=dict(t=60, r=20, l=20, b=40), yaxis_title="Budget (ZMW)")
-
-    # Add % share annotations if total provided
-    if total_budget:
-        annotations = []
-        for _, row in df.iterrows():
-            share = (row["2024"] / total_budget) * 100 if total_budget else 0
-            annotations.append(dict(
-                x=row["Programme"],
-                y=row["2024"],
-                text=f"{share:.2f}%",
-                showarrow=False,
-                yshift=20,
-                font=dict(color="blue", size=12)
-            ))
-        fig.update_layout(annotations=annotations)
-
-    return fig
-
-def climate_2024_vs_total_chart(df, total_budget=10222074515):
-    """
-    Bar chart for climate programmes (2024 only) vs. total 2024 national budget.
-    """
-    # Build dataframe with climate 2024 figures
-    df_2024 = df[["Programme", "2024"]].copy()
-
-    fig = px.bar(
-        df_2024,
-        x="Programme",
-        y="2024",
-        text="2024",
-        title="🌍 Climate-Tagged Programmes (2024 vs Total Budget)",
-        template="plotly_white"
-    )
-
-    # Add total budget reference line
-    fig.add_hline(
-        y=total_budget,
-        line_dash="dash",
-        line_color="red",
-        annotation_text=f"Total Budget: {total_budget:,.0f} ZMW",
-        annotation_position="top left",
-        annotation_font=dict(color="red", size=12)
-    )
-
-    # Show budget figures on bars
-    fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
-
-    # Format y-axis with commas
-    fig.update_layout(
-        yaxis_title="Budget (ZMW)",
-        yaxis_tickformat=",",
-        margin=dict(t=60, r=20, l=20, b=40)
-    )
-
-    return fig
-
-def climate_multi_year_chart(df, total_budget=None):
-    """
-    Grouped bar chart (2022 vs 2023 vs 2024) for climate programmes
-    (codes 07, 17, 18, 41, 61).
-    Y-axis = average total of 2022, 2023, 2024 budgets.
-    """
-    # Ensure 2022 is included
-    if "2022" not in df.columns:
-        df["2022"] = 0
-
-    melted = df.melt(
-        id_vars=["Programme"],
-        value_vars=["2022", "2023", "2024"],
-        var_name="Year",
-        value_name="Budget"
-    )
-
-    avg_total = melted.groupby("Year")["Budget"].sum().mean()
-
-    fig = px.bar(
-        melted,
-        x="Programme",
-        y="Budget",
-        color="Year",
-        barmode="group",
-        text="Budget",
-        title="🌍 Climate Programmes (2022 vs 2023 vs 2024)",
-        template="plotly_white"
-    )
-
-    fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
-
-    # Average line
-    fig.add_hline(
-        y=avg_total,
-        line_dash="dot",
-        line_color="blue",
-        annotation_text=f"Avg 2022–2024 Total: {avg_total:,.0f} ZMW",
-        annotation_position="top left",
-        annotation_font=dict(color="blue", size=12)
-    )
-
-    fig.update_layout(
-        yaxis_title="Budget (ZMW)",
-        yaxis_tickformat=",",
-        margin=dict(t=60, r=20, l=20, b=40)
-    )
-    return fig
-
-
-def climate_2024_vs_total_chart(df, total_budget=10222074515):
-    """
-    Bar chart for climate programmes (2024 only) vs. total 2024 national budget.
-    Handles NoneType total_budget safely.
-    """
-    df_2024 = df[["Programme", "2024"]].copy()
-
-    fig = px.bar(
-        df_2024,
-        x="Programme",
-        y="2024",
-        text="2024",
-        title="🌍 Climate Programmes (2024 vs Total Budget)",
-        template="plotly_white"
-    )
-
-    # Ensure total_budget is a number
-    if total_budget is None:
-        total_budget = 0
-
-    # Add total budget reference line
-    fig.add_hline(
-        y=total_budget,
-        line_dash="dash",
-        line_color="red",
-        annotation_text=f"Total Budget: {total_budget:,.0f} ZMW" if total_budget else "Total Budget: N/A",
-        annotation_position="top left",
-        annotation_font=dict(color="red", size=12)
-    )
-
-    # Show budget figures on bars
-    fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
-
-    # Format y-axis with commas
-    fig.update_layout(
-        yaxis_title="Budget (ZMW)",
-        yaxis_tickformat=",",
-        margin=dict(t=60, r=20, l=20, b=40)
-    )
-
-    return fig

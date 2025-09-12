@@ -6,3 +6,6 @@ numpy
 requests
 matplotlib
 scikit-learn
+python-dotenv
+openai
+flask-bcrypt
