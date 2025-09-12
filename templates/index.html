@@ -111,19 +111,17 @@
         </ul>
       </div>
 
+      <!-- SLIDESHOW DYNAMIC -->
       <div class="section">
         <h3>🏷 Featured National Climate Projects</h3>
         <div id="slideshow">
-          <div class="slide active">
-            <img src="{{ url_for('static', filename='images/chisamba.jpg') }}" alt="Chisamba Solar Power Plant">
-            <h4>Chisamba Solar Power Plant (100 MW)</h4>
-            <p>Commissioned June 2025; helps diversify Zambia’s energy mix away from hydropower.</p>
-          </div>
-          <div class="slide">
-            <img src="{{ url_for('static', filename='images/itimpi.jpg') }}" alt="Itimpi Solar Power">
-            <h4>Itimpi Solar Power Station (60 MW)</h4>
-            <p>Kitwe-based solar farm addressing electricity shortages, commissioned April 2024.</p>
-          </div>
+          {% for project in projects %}
+            <div class="slide {% if loop.first %}active{% endif %}">
+              <img src="{{ url_for('static', filename=project.img) }}" alt="{{ project.title }}">
+              <h4>{{ project.title }}</h4>
+              <p>{{ project.desc }}</p>
+            </div>
+          {% endfor %}
         </div>
         <div class="slideshow-controls">
           <button onclick="prevSlide()">⬅️ Prev</button>

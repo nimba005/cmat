@@ -9,9 +9,6 @@ app.secret_key = "supersecretkey"  # change to env variable in production
 def home():
     return render_template("index.html", page="home")
 
-@app.route("/about")
-def about():
-    return render_template("index.html", page="about")
 
 @app.route("/upload", methods=["GET"])
 def upload_page():
@@ -60,6 +57,53 @@ def login():
 def logout():
     session.pop("user", None)
     return redirect("/")
+
+@app.route("/about")
+def about():
+    projects = [
+        {
+            "title": "Chisamba Solar Power Plant (100 MW)",
+            "desc": "Commissioned June 2025; helps diversify Zambia’s energy mix away from hydropower.",
+            "img": "images/chisamba.jpg"
+        },
+        {
+            "title": "Itimpi Solar Power Station (60 MW)",
+            "desc": "Kitwe-based solar farm addressing electricity shortages, commissioned April 2024.",
+            "img": "images/itimpi.jpg"
+        },
+        {
+            "title": "Zambia Riverside Solar Power Station (34 MW)",
+            "desc": "Expanded solar farm in Kitwe operational since February 2023.",
+            "img": "images/riverside.jpg"
+        },
+        {
+            "title": "Growing Greener Project (Simalaha Conservancy)",
+            "desc": "Community-led project building resilience, combating desertification and boosting biodiversity.",
+            "img": "images/greener.jpg"
+        },
+        {
+            "title": "Strengthening Climate Resilience in the Barotse Sub-basin",
+            "desc": "CIF/World Bank-supported effort (2013–2022) to enhance local adaptation capacity.",
+            "img": "images/barotse.jpg"
+        },
+        {
+            "title": "Early Warning Systems Project",
+            "desc": "UNDP-GEF initiative building Zambia’s hydro-meteorological monitoring infrastructure.",
+            "img": "images/earlywarning.jpg"
+        },
+        {
+            "title": "National Adaptation Programme of Action (NAPA)",
+            "desc": "Targeted adaptation interventions prioritizing vulnerable sectors.",
+            "img": "images/napa.jpg"
+        },
+        {
+            "title": "NDC Implementation Framework",
+            "desc": "₮17.2 B Blueprint (2023–2030) aligning mitigation/adaptation with national development goals.",
+            "img": "images/ndc.jpg"
+        }
+    ]
+    return render_template("index.html", page="about", projects=projects)
+
 
 # ------------------ API: FILE UPLOAD ------------------
 @app.route("/upload", methods=["POST"])
