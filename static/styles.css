@@ -115,6 +115,35 @@ pre {
   overflow-x: auto;
   border: 1px solid #ccc;
 }
+#slideshow {
+  position: relative;
+  max-width: 700px;
+  margin: auto;
+}
+
+.slide {
+  display: none;
+  text-align: center;
+}
+
+.slide.active {
+  display: block;
+}
+
+.slide img {
+  max-width: 100%;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.slideshow-controls {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.slideshow-controls button {
+  margin: 5px;
+}
 
 /* FOOTER */
 .footer {

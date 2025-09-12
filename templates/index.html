@@ -58,16 +58,99 @@
       <div class="section">
         <h2>ℹ️ About CMAT</h2>
         <p>
-          CMAT is an AI-enabled oversight tool for Zambia’s National Assembly. 
-          It tracks budgets, laws, and climate projects to ensure transparency 
-          and accountability in climate governance.
+          The <strong>Climate Monitoring & Accountability Tool (CMAT)</strong> is an AI-enabled 
+          platform developed by the <strong>National Assembly of Zambia (NAZ)</strong> in 
+          collaboration with <strong>AGNES</strong>.
         </p>
+
+        <h3>📜 Background & Context</h3>
         <ul>
-          <li>📜 Developed under NAZ Standing Orders (2024)</li>
-          <li>🎯 Supports tracking of climate-related budgets & policies</li>
-          <li>🌍 Aligns with Paris Agreement & Zambia’s NDCs</li>
+          <li>Developed in line with <strong>NAZ Standing Orders (2024)</strong> and the <strong>National Planning and Budgeting Act No. 1 of 2020</strong>.</li>
+          <li>Focuses on oversight of the <strong>Ministry of Green Economy and Environment</strong>.</li>
+          <li>Supports alignment with international commitments (Paris Agreement, NDCs).</li>
+        </ul>
+
+        <h3>🎯 Objectives</h3>
+        <ol>
+          <li>Track climate-related laws, budgets, and strategies.</li>
+          <li>Strengthen transparency in climate finance.</li>
+          <li>Promote accountability in project implementation.</li>
+          <li>Enhance public engagement and awareness.</li>
+        </ol>
+      </div>
+
+      <div class="section">
+        <h3>📊 Indicators for CMAT</h3>
+        <p>Indicators are grouped under the following categories:</p>
+
+        <details>
+          <summary>📌 Legislative</summary>
+          <ul>
+            <li>Number of Climate-Related Laws Enacted</li>
+            <li>Quality of Climate Legislation</li>
+            <li>Timeliness of Law Implementation</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>📌 Financial</summary>
+          <ul>
+            <li>Total Public Investment in Climate Initiatives</li>
+            <li>Budget % Allocated to Climate Adaptation</li>
+            <li>Private Sector Investment Mobilized</li>
+          </ul>
+        </details>
+      </div>
+
+      <div class="section">
+        <h3>📂 Reports & Resources</h3>
+        <ul>
+          <li>📘 National Climate Indicators Report (2025) <em>(Coming Soon)</em></li>
+          <li>📗 Annual Budget Oversight Report <em>(Draft in progress)</em></li>
+          <li>📄 Public Awareness Briefs (2025)</li>
         </ul>
       </div>
+
+      <div class="section">
+        <h3>🏷 Featured National Climate Projects</h3>
+        <div id="slideshow">
+          <div class="slide active">
+            <img src="{{ url_for('static', filename='images/chisamba.jpg') }}" alt="Chisamba Solar Power Plant">
+            <h4>Chisamba Solar Power Plant (100 MW)</h4>
+            <p>Commissioned June 2025; helps diversify Zambia’s energy mix away from hydropower.</p>
+          </div>
+          <div class="slide">
+            <img src="{{ url_for('static', filename='images/itimpi.jpg') }}" alt="Itimpi Solar Power">
+            <h4>Itimpi Solar Power Station (60 MW)</h4>
+            <p>Kitwe-based solar farm addressing electricity shortages, commissioned April 2024.</p>
+          </div>
+        </div>
+        <div class="slideshow-controls">
+          <button onclick="prevSlide()">⬅️ Prev</button>
+          <button onclick="nextSlide()">Next ➡️</button>
+        </div>
+      </div>
+
+      <script>
+        let slides = document.querySelectorAll("#slideshow .slide");
+        let current = 0;
+
+        function showSlide(index) {
+          slides.forEach((s, i) => s.classList.toggle("active", i === index));
+        }
+
+        function nextSlide() {
+          current = (current + 1) % slides.length;
+          showSlide(current);
+        }
+
+        function prevSlide() {
+          current = (current - 1 + slides.length) % slides.length;
+          showSlide(current);
+        }
+
+        setInterval(nextSlide, 5000);
+      </script>
 
     {% elif page == "upload" %}
       <div class="section">
