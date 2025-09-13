@@ -128,6 +128,8 @@ pre {
   overflow-x: auto;
   border: 1px solid #ccc;
 }
+
+/* SLIDESHOW */
 #slideshow {
   position: relative;
   max-width: 700px;
@@ -151,7 +153,6 @@ pre {
   margin-bottom: 10px;
 }
 
-
 .slideshow-controls {
   text-align: center;
   margin-top: 10px;
@@ -174,9 +175,12 @@ pre {
   color: #95d5b2;
   text-decoration: none;
 }
+
 .footer a:hover {
   text-decoration: underline;
 }
+
+/* FLASH MESSAGES */
 .flash {
   padding: 10px;
   margin: 10px 0;
@@ -185,3 +189,43 @@ pre {
 }
 .flash.success { background: #d4edda; color: #155724; }
 .flash.error   { background: #f8d7da; color: #721c24; }
+
+/* DOCS GRID (new) */
+.docs-grid {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.doc-card {
+  background: #f8f9fa;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  padding: 20px;
+  width: 250px;
+  text-align: center;
+  text-decoration: none;
+  color: #333;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.doc-card:hover {
+  border-color: #2e7d32;
+  background: #e8f5e9;
+  transform: translateY(-5px);
+  color: #2e7d32;
+}
+
+.doc-card .icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.doc-card h3 {
+  margin: 10px 0;
+  font-size: 18px;
+  font-weight: bold;
+}
