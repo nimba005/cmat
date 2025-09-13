@@ -53,13 +53,27 @@
           explore more.
         </p>
       </div>
+
+      <!-- UPDATED: About section with PDF links -->
       <div class="section">
         <h2>📰 About the Tool</h2>
         <p>Learn more about the Monitoring and Accountability tool</p>
         <ul>
-          <li><strong>Climate Insights</strong> – Stay informed with the latest news, analysis, and developments on climate action and sustainability efforts.</li>
-          <li><strong>Explore Climate Resources</strong> – Access a repository of climate-related documents for easy reference and exploration.</li>
-          <li><strong>GIS for Climate Related Projects</strong> – Verify on-the-ground climate projects with our GIS tool for accurate project tracking and progress updates.</li>
+          <li>
+            <a href="{{ url_for('download_file', filename='climate_insights.pdf') }}" target="_blank">
+              <strong>Climate Insights</strong>
+            </a> – Stay informed with the latest news, analysis, and developments on climate action and sustainability efforts.
+          </li>
+          <li>
+            <a href="{{ url_for('download_file', filename='resources.pdf') }}" target="_blank">
+              <strong>Explore Climate Resources</strong>
+            </a> – Access a repository of climate-related documents for easy reference and exploration.
+          </li>
+          <li>
+            <a href="{{ url_for('download_file', filename='gis_projects.pdf') }}" target="_blank">
+              <strong>GIS for Climate Related Projects</strong>
+            </a> – Verify on-the-ground climate projects with our GIS tool for accurate project tracking and progress updates.
+          </li>
         </ul>
       </div>
 
