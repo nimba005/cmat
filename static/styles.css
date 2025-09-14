@@ -20,6 +20,9 @@ body {
 .nav-left h2 {
   margin: 0;
   font-size: 1.5em;
+  display: flex;
+  align-items: center;
+  gap: 10px;   /* space between logo and text */
 }
 
 .nav-right {
@@ -36,6 +39,12 @@ body {
 
 .nav-link:hover {
   color: #95d5b2;
+}
+
+.logo {
+  height: 40px;   /* adjust to fit nicely */
+  width: auto;    /* keep aspect ratio */
+  border-radius: 4px; /* optional: soften corners */
 }
 
 /* HEADER */
@@ -229,3 +238,5 @@ pre {
   font-size: 18px;
   font-weight: bold;
 }
+
+
