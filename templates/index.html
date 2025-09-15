@@ -207,13 +207,25 @@
           <div class="carousel" id="financial-carousel">
 
             <!-- Example yearly docs -->
-            <a href="{{ url_for('download_file', filename='financial_2021.pdf') }}" target="_blank" class="carousel-card">
+            <a href="{{ url_for('download_file', filename='2016Budget.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/finance2016.jpg') }}" alt="Financial 2016">
+              <h3>Financial Report 2016</h3>
+              <p>Annual budget & expenditure summary</p>
+            </a>
+
+            <a href="{{ url_for('download_file', filename='Yellow Book 2017.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/finance2017.jpg') }}" alt="Financial 2017">
+              <h3>Financial Report 2017</h3>
+              <p>Annual budget & expenditure summary</p>
+            </a>
+
+            <a href="{{ url_for('download_file', filename='2021 Yellow Book.pdf') }}" target="_blank" class="carousel-card">
               <img src="{{ url_for('static', filename='images/finance2021.jpg') }}" alt="Financial 2021">
               <h3>Financial Report 2021</h3>
               <p>Annual budget & expenditure summary</p>
             </a>
 
-            <a href="{{ url_for('download_file', filename='financial_2022.pdf') }}" target="_blank" class="carousel-card">
+            <a href="{{ url_for('download_file', filename='2022 YELLOW BOOK.pdf') }}" target="_blank" class="carousel-card">
               <img src="{{ url_for('static', filename='images/finance2022.jpg') }}" alt="Financial 2022">
               <h3>Financial Report 2022</h3>
               <p>Climate finance allocations and spending</p>
@@ -225,9 +237,15 @@
               <p>Parliamentary oversight and analysis</p>
             </a>
 
-            <a href="{{ url_for('download_file', filename='financial_2024.pdf') }}" target="_blank" class="carousel-card">
+            <a href="{{ url_for('download_file', filename='2024_20National_20Budget_20OBB.pdf') }}" target="_blank" class="carousel-card">
               <img src="{{ url_for('static', filename='images/finance2024.jpg') }}" alt="Financial 2024">
               <h3>Financial Report 2024</h3>
+              <p>Detailed expenditure and projections</p>
+            </a>
+
+            <a href="{{ url_for('download_file', filename='2025_20APPROVED_20BUDGET.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/finance2025.jpg') }}" alt="Financial 2025">
+              <h3>Financial Report 2025</h3>
               <p>Detailed expenditure and projections</p>
             </a>
 
