@@ -134,22 +134,32 @@
           <button class="carousel-btn next" onclick="scrollCarousel(1)">➡️</button>
         </div>
       </div>
+
       <script>
         const carousel = document.getElementById("climate-carousel");
         const scrollAmount = 320; // card width + gap
 
-        function scrollCarousel(direction) {
+        // Clone all cards and append to the carousel (for seamless loop)
+        const cards = Array.from(carousel.children);
+        cards.forEach(card => {
+          const clone = card.cloneNode(true);
+          carousel.appendChild(clone);
+        });
+
+        function scrollCarousel(direction = 1) {
           carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
 
-          // If we’ve reached the end, loop back
-          if (direction === 1 && carousel.scrollLeft + carousel.offsetWidth >= carousel.scrollWidth) {
-          setTimeout(() => { carousel.scrollTo({ left: 0, behavior: "smooth" }); }, 500);
+          // If we've scrolled past half the content (original set), reset back
+          if (carousel.scrollLeft >= carousel.scrollWidth / 2) {
+          carousel.scrollTo({ left: 0, behavior: "auto" });
           }
         }
 
-        // Auto-scroll every 5 seconds
-        setInterval(() => scrollCarousel(1), 5000);
+        // Auto-scroll every 3s (you can change speed)
+        setInterval(scrollCarousel, 3000);
       </script>
+
+
 
 
 
