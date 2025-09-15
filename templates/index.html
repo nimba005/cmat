@@ -90,71 +90,68 @@
         <h2>🌍 Relevant Content on Climate Change</h2>
         <p>Explore highlights on climate action, policies, and key events</p>
 
-        <div id="reviews-slideshow">
-          <div class="review-slide active">
-            <img src="{{ url_for('static', filename='images/climate/COP-28.png') }}" alt="COP-28">
-            <h3>COP-28</h3>
-            <p>Highlights from COP-28 showcasing international commitments towards climate action.</p>
-          </div>
+        <div class="carousel-container">
+          <button class="carousel-btn prev" onclick="scrollCarousel(-1)">⬅️</button>
+          <div class="carousel" id="climate-carousel">
+      
+            <a href="{{ url_for('download_file', filename='cop28.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/COP-28.png') }}" alt="COP-28">
+              <h3>COP-28</h3>
+              <p>Highlights from COP-28 showcasing international commitments.</p>
+            </a>
 
-          <div class="review-slide">
-            <img src="{{ url_for('static', filename='images/climate/image.png') }}" alt="Climate Finance">
-            <h3>Climate Finance</h3>
-            <p>Insights on financing climate projects and mobilizing resources for sustainability.</p>
-          </div>
+            <a href="{{ url_for('download_file', filename='climate_finance.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/image.png') }}" alt="Climate Finance">
+              <h3>Climate Finance</h3>
+              <p>Insights on financing climate projects and mobilizing resources.</p>
+            </a>
 
-          <div class="review-slide">
-            <img src="{{ url_for('static', filename='images/climate/impact.png') }}" alt="Climate Impact">
-            <h3>Climate Change Impact</h3>
-            <p>Examining the effects of climate change on communities, health, and economies.</p>
-          </div>
+            <a href="{{ url_for('download_file', filename='impact.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/impact.png') }}" alt="Climate Impact">
+              <h3>Climate Change Impact</h3>
+              <p>Examining the effects of climate change on communities.</p>
+            </a>
 
-          <div class="review-slide">
-            <img src="{{ url_for('static', filename='images/climate/cop29.jpg') }}" alt="COP-29">
-            <h3>COP-29</h3>
-            <p>Looking ahead to COP-29 and the key negotiations shaping climate governance.</p>
-          </div>
+            <a href="{{ url_for('download_file', filename='cop29.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/cop29.jpg') }}" alt="COP-29">
+              <h3>COP-29</h3>
+              <p>Looking ahead to COP-29 and key negotiations.</p>
+            </a>
 
-          <div class="review-slide">
-            <img src="{{ url_for('static', filename='images/climate/policy..jpg') }}" alt="Policy">
-            <h3>Climate Change Policy</h3>
-            <p>Understanding the frameworks guiding Zambia’s and global climate policies.</p>
-          </div>
+            <a href="{{ url_for('download_file', filename='policy.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/policy.jpg') }}" alt="Policy">
+              <h3>Climate Change Policy</h3>
+              <p>Understanding Zambia’s and global climate policies.</p>
+            </a>
 
-          <div class="review-slide">
-            <img src="{{ url_for('static', filename='images/climate/AGNES.png') }}" alt="AGNES">
-            <h3>Learn about AGNES</h3>
-            <p>Discover the role of AGNES in supporting African negotiators in climate talks.</p>
-          </div>
-        </div>
+            <a href="{{ url_for('download_file', filename='agnes.pdf') }}" target="_blank" class="carousel-card">
+              <img src="{{ url_for('static', filename='images/AGNES.png') }}" alt="AGNES">
+              <h3>Learn about AGNES</h3>
+              <p>Discover the role of AGNES in climate negotiations.</p>
+            </a>
 
-        <div class="slideshow-controls">
-          <button onclick="prevReview()">⬅️ Prev</button>
-          <button onclick="nextReview()">Next ➡️</button>
+          </div>
+          <button class="carousel-btn next" onclick="scrollCarousel(1)">➡️</button>
         </div>
       </div>
-
       <script>
-        let reviewSlides = document.querySelectorAll("#reviews-slideshow .review-slide");
-        let reviewIndex = 0;
+        const carousel = document.getElementById("climate-carousel");
+        const scrollAmount = 320; // card width + gap
 
-        function showReviewSlide(i) {
-          reviewSlides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+        function scrollCarousel(direction) {
+          carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
+
+          // If we’ve reached the end, loop back
+          if (direction === 1 && carousel.scrollLeft + carousel.offsetWidth >= carousel.scrollWidth) {
+          setTimeout(() => { carousel.scrollTo({ left: 0, behavior: "smooth" }); }, 500);
+          }
         }
 
-        function nextReview() {
-          reviewIndex = (reviewIndex + 1) % reviewSlides.length;
-          showReviewSlide(reviewIndex);
-        }
-
-        function prevReview() {
-          reviewIndex = (reviewIndex - 1 + reviewSlides.length) % reviewSlides.length;
-          showReviewSlide(reviewIndex);
-        }
-
-        // auto-slide every 6s
-        setInterval(nextReview, 6000);
+        // Auto-scroll every 5 seconds
+        setInterval(() => scrollCarousel(1), 5000);
       </script>
+
+
 
       <!-- NEW: News & Articles Section -->
       <div class="section">

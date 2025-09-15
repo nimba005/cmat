@@ -233,45 +233,72 @@ pre {
   margin: 5px;
 }
 
-/* REVIEWS SLIDESHOW */
-#reviews-slideshow {
+/* CAROUSEL */
+.carousel-container {
   position: relative;
-  max-width: 700px;
-  margin: 20px auto;
+  display: flex;
+  align-items: center;
 }
 
-.review-slide {
-  display: none;
-  text-align: center;
-  padding: 20px;
+.carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 20px;
+  padding: 10px;
+  scrollbar-width: none; /* hide scrollbar for Firefox */
 }
+.carousel::-webkit-scrollbar { display: none; } /* hide scrollbar for Chrome */
 
-.review-slide.active {
-  display: block;
-  animation: fadeIn 1s ease-in-out;
-}
-
-.review-slide img {
-  width: 100%;
-  height: 300px;
-  object-fit: cover;
+.carousel-card {
+  flex: 0 0 280px;
+  background: #fff;
   border-radius: 12px;
-  margin-bottom: 15px;
-}
-
-.review-slide h3 {
-  margin: 10px 0;
-  color: #1b4332;
-}
-
-.review-slide p {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  text-align: center;
+  padding: 15px;
+  text-decoration: none;
   color: #333;
-  font-size: 0.95em;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.carousel-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+}
+
+.carousel-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.carousel-card h3 {
+  color: #1b4332;
+  margin: 10px 0;
+}
+
+.carousel-card p {
+  font-size: 0.9em;
+  color: #444;
+}
+
+.carousel-btn {
+  background: #2d6a4f;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2em;
+  margin: 0 5px;
+  transition: background 0.3s;
+}
+
+.carousel-btn:hover {
+  background: #40916c;
 }
 
 
