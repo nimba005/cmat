@@ -22,6 +22,7 @@
       <a href="/" class="nav-link">Home</a>
       <a href="/about" class="nav-link">About</a>
       {% if session.get("user") %}
+        <a href="/calendar" class="nav-link">Calendar</a>
         <a href="/upload" class="nav-link">Upload Doc</a>
         <a href="/survey" class="nav-link">Survey</a>
         <a href="/logout" class="nav-link">Logout</a>
@@ -375,6 +376,48 @@
 
         setInterval(nextSlide, 5000);
       </script>
+
+    {% elif page == "calendar" %}
+      <div class="section">
+        <h2>📅 Zambia Public Holidays & Events</h2>
+        <p>View official holidays and add your own events/reminders.</p>
+        <div id="calendar"></div>
+      </div>
+
+      <!-- FullCalendar.js Integration -->
+      <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+      <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          var calendarEl = document.getElementById("calendar");
+
+          var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: "dayGridMonth",
+            events: [
+              // 🇿🇲 Example Zambia holidays (you can expand)
+              { title: "New Year’s Day", start: "2025-01-01" },
+              { title: "International Women’s Day", start: "2025-03-08" },
+              { title: "Labour Day", start: "2025-05-01" },
+              { title: "Independence Day", start: "2025-10-24" },
+            ],
+            selectable: true,
+            select: function(info) {
+              let eventTitle = prompt("Enter reminder/meeting title:");
+              if (eventTitle) {
+                calendar.addEvent({
+                  title: eventTitle,
+                  start: info.startStr,
+                  end: info.endStr
+                });
+              }
+            }
+          });
+
+          calendar.render();
+        });
+      </script>
+
 
     {% elif page == "upload" %}
       <div class="section">

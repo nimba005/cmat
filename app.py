@@ -75,6 +75,13 @@ def survey():
         return redirect("/login")
     return render_template("index.html", page="survey")
 
+@app.route("/calendar")
+def calendar():
+    if "user" not in session:
+        return redirect("/login")
+    return render_template("index.html", page="calendar")
+
+
 
 # ------------------ AUTH ROUTES ------------------
 @app.route("/signup", methods=["GET", "POST"])
