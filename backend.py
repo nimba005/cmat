@@ -100,11 +100,11 @@ def get_events(username):
     return [{"id": r[0], "title": r[1], "start": r[2], "end": r[3]} for r in rows]
 
 def delete_event(username, event_id):
-    """Delete event if it belongs to the logged-in user."""
+    """Delete an event if it belongs to the given username."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    # Ensure user owns this event
+    # Find user_id for the username
     c.execute("SELECT id FROM users WHERE username=?", (username,))
     user = c.fetchone()
     if not user:
@@ -113,11 +113,13 @@ def delete_event(username, event_id):
 
     user_id = user[0]
 
+    # Delete only if the event belongs to this user
     c.execute("DELETE FROM events WHERE id=? AND user_id=?", (event_id, user_id))
     conn.commit()
-    deleted = c.rowcount > 0
+    deleted = c.rowcount > 0  # True if any row was deleted
     conn.close()
     return deleted
+
 
 
 
