@@ -233,6 +233,48 @@ pre {
   margin: 5px;
 }
 
+/* REVIEWS SLIDESHOW */
+#reviews-slideshow {
+  position: relative;
+  max-width: 700px;
+  margin: 20px auto;
+}
+
+.review-slide {
+  display: none;
+  text-align: center;
+  padding: 20px;
+}
+
+.review-slide.active {
+  display: block;
+  animation: fadeIn 1s ease-in-out;
+}
+
+.review-slide img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+
+.review-slide h3 {
+  margin: 10px 0;
+  color: #1b4332;
+}
+
+.review-slide p {
+  color: #333;
+  font-size: 0.95em;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+
 /* FOOTER */
 .footer {
   background: #1b4332;

@@ -85,6 +85,77 @@
         </div>
       </div>
 
+      <!-- 🌍 CLIMATE CONTENT SLIDESHOW -->
+      <div class="section">
+        <h2>🌍 Relevant Content on Climate Change</h2>
+        <p>Explore highlights on climate action, policies, and key events</p>
+
+        <div id="reviews-slideshow">
+          <div class="review-slide active">
+            <img src="{{ url_for('static', filename='images/climate/COP-28.png') }}" alt="COP-28">
+            <h3>COP-28</h3>
+            <p>Highlights from COP-28 showcasing international commitments towards climate action.</p>
+          </div>
+
+          <div class="review-slide">
+            <img src="{{ url_for('static', filename='images/climate/image.png') }}" alt="Climate Finance">
+            <h3>Climate Finance</h3>
+            <p>Insights on financing climate projects and mobilizing resources for sustainability.</p>
+          </div>
+
+          <div class="review-slide">
+            <img src="{{ url_for('static', filename='images/climate/impact.png') }}" alt="Climate Impact">
+            <h3>Climate Change Impact</h3>
+            <p>Examining the effects of climate change on communities, health, and economies.</p>
+          </div>
+
+          <div class="review-slide">
+            <img src="{{ url_for('static', filename='images/climate/cop29.jpg') }}" alt="COP-29">
+            <h3>COP-29</h3>
+            <p>Looking ahead to COP-29 and the key negotiations shaping climate governance.</p>
+          </div>
+
+          <div class="review-slide">
+            <img src="{{ url_for('static', filename='images/climate/policy..jpg') }}" alt="Policy">
+            <h3>Climate Change Policy</h3>
+            <p>Understanding the frameworks guiding Zambia’s and global climate policies.</p>
+          </div>
+
+          <div class="review-slide">
+            <img src="{{ url_for('static', filename='images/climate/AGNES.png') }}" alt="AGNES">
+            <h3>Learn about AGNES</h3>
+            <p>Discover the role of AGNES in supporting African negotiators in climate talks.</p>
+          </div>
+        </div>
+
+        <div class="slideshow-controls">
+          <button onclick="prevReview()">⬅️ Prev</button>
+          <button onclick="nextReview()">Next ➡️</button>
+        </div>
+      </div>
+
+      <script>
+        let reviewSlides = document.querySelectorAll("#reviews-slideshow .review-slide");
+        let reviewIndex = 0;
+
+        function showReviewSlide(i) {
+          reviewSlides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+        }
+
+        function nextReview() {
+          reviewIndex = (reviewIndex + 1) % reviewSlides.length;
+          showReviewSlide(reviewIndex);
+        }
+
+        function prevReview() {
+          reviewIndex = (reviewIndex - 1 + reviewSlides.length) % reviewSlides.length;
+          showReviewSlide(reviewIndex);
+        }
+
+        // auto-slide every 6s
+        setInterval(nextReview, 6000);
+      </script>
+
       <!-- NEW: News & Articles Section -->
       <div class="section">
         <h2>📰 News & Articles</h2>
