@@ -23,6 +23,19 @@ def init_db():
             password TEXT NOT NULL
         )
     """)
+
+    # Events table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            start TEXT NOT NULL,
+            end TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -49,6 +62,64 @@ def verify_user(username, password):
     if row and bcrypt.check_password_hash(row[0], password):
         return True
     return False
+
+
+def get_user_id(username):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id FROM users WHERE username = ?", (username,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def add_event(username, title, start, end):
+    user_id = get_user_id(username)
+    if not user_id:
+        return False
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO events (user_id, title, start, end) VALUES (?, ?, ?, ?)",
+              (user_id, title, start, end))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_events(username):
+    user_id = get_user_id(username)
+    if not user_id:
+        return []
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, title, start, end FROM events WHERE user_id = ?", (user_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [{"id": r[0], "title": r[1], "start": r[2], "end": r[3]} for r in rows]
+
+def delete_event(username, event_id):
+    """Delete event if it belongs to the logged-in user."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    # Ensure user owns this event
+    c.execute("SELECT id FROM users WHERE username=?", (username,))
+    user = c.fetchone()
+    if not user:
+        conn.close()
+        return False
+
+    user_id = user[0]
+
+    c.execute("DELETE FROM events WHERE id=? AND user_id=?", (event_id, user_id))
+    conn.commit()
+    deleted = c.rowcount > 0
+    conn.close()
+    return deleted
+
+
 
 # Load environment variables
 load_dotenv()

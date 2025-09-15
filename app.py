@@ -81,6 +81,35 @@ def calendar():
         return redirect("/login")
     return render_template("index.html", page="calendar")
 
+@app.route("/api/events", methods=["GET", "POST"])
+def events_api():
+    if "user" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    if request.method == "POST":
+        data = request.json
+        title = data.get("title")
+        start = data.get("start")
+        end = data.get("end")
+        if not all([title, start, end]):
+            return jsonify({"error": "Missing fields"}), 400
+        success = backend.add_event(session["user"], title, start, end)
+        return jsonify({"success": success})
+
+    # GET events
+    events = backend.get_events(session["user"])
+    return jsonify(events)
+
+@app.route("/api/events/<int:event_id>", methods=["DELETE"])
+def delete_event(event_id):
+    if "user" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    success = backend.delete_event(session["user"], event_id)
+    return jsonify({"success": success})
+
+
+
 
 
 # ------------------ AUTH ROUTES ------------------

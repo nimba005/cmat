@@ -390,26 +390,36 @@
 
       <script>
         document.addEventListener("DOMContentLoaded", function () {
-          var calendarEl = document.getElementById("calendar");
+          const calendarEl = document.getElementById("calendar");
 
-          var calendar = new FullCalendar.Calendar(calendarEl, {
+          const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: "dayGridMonth",
-            events: [
-              // 🇿🇲 Example Zambia holidays (you can expand)
-              { title: "New Year’s Day", start: "2025-01-01" },
-              { title: "International Women’s Day", start: "2025-03-08" },
-              { title: "Labour Day", start: "2025-05-01" },
-              { title: "Independence Day", start: "2025-10-24" },
-            ],
+            events: "/api/events", // 🔗 Load events from Flask API
             selectable: true,
+
+            // Add new events
             select: function(info) {
-              let eventTitle = prompt("Enter reminder/meeting title:");
-              if (eventTitle) {
-                calendar.addEvent({
-                  title: eventTitle,
-                  start: info.startStr,
-                  end: info.endStr
-                });
+              const title = prompt("Enter Event Title:");
+              if (title) {
+                fetch("/api/events", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    title: title,
+                    start: info.startStr,
+                    end: info.endStr
+                  })
+                })
+                .then(res => res.json())
+                .then(() => calendar.refetchEvents());
+              }
+            },
+            // Delete existing events
+            eventClick: function(info) {
+              if (confirm(`Delete event: "${info.event.title}"?`)) {
+                fetch(`/api/events/${info.event.id}`, { method: "DELETE" })
+                  .then(res => res.json())
+                  .then(() => calendar.refetchEvents());
               }
             }
           });
