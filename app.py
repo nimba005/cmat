@@ -30,7 +30,7 @@ def about():
         {
             "title": "Growing Greener Project (Simalaha Conservancy)",
             "desc": "Community-led project building resilience, combating desertification and boosting biodiversity.",
-            "img": "images/greaner.jpg"   # fixed typo: was greener.jpg in your folder
+            "img": "images/greener.jpg"
         },
         {
             "title": "Strengthening Climate Resilience in the Barotse Sub-basin",
