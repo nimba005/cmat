@@ -190,12 +190,20 @@ def chat():
     if not user_message:
         return jsonify({"error": "Message required"}), 400
 
+    # Build system prompt
+    system_prompt = (
+        "You are a helpful assistant specialized in climate policy, "
+        "finance, and adaptation in Zambia. Always give clear, accurate, "
+        "and structured answers."
+    )
+
+    # --- Try OpenAI first ---
     try:
-        client = backend.get_client()
+        client = backend.get_openai_client()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant specialized in climate policy, finance, and adaptation in Zambia."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
             ],
             temperature=0.4
@@ -203,7 +211,34 @@ def chat():
         reply = response.choices[0].message["content"]
         return jsonify({"reply": reply})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("⚠️ OpenAI chat failed, falling back to DeepSeek:", e)
+
+    # --- Fallback: DeepSeek ---
+    try:
+        import requests, os
+        deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        if not deepseek_key:
+            return jsonify({"error": "No DeepSeek API key configured"}), 500
+
+        headers = {"Authorization": f"Bearer {deepseek_key}", "Content-Type": "application/json"}
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            "temperature": 0.4
+        }
+
+        r = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=payload, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        reply = data["choices"][0]["message"]["content"]
+        return jsonify({"reply": reply})
+    except Exception as e:
+        print("❌ DeepSeek chat failed:", e)
+        return jsonify({"error": "Both OpenAI and DeepSeek failed"}), 500
+
 
 
 

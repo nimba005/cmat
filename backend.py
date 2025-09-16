@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from openai import OpenAI, RateLimitError, AuthenticationError
 import sqlite3
 from flask_bcrypt import Bcrypt
+import requests
 
 bcrypt = Bcrypt()
 
@@ -153,9 +154,13 @@ def get_client():
         return client
     except (RateLimitError, AuthenticationError):
         current_key_index = (current_key_index + 1) % len(API_KEYS)
-        client = OpenAI(api_key=API_KEYS[current_key_index])
-        print(f"⚠️ Switched to backup key #{current_key_index+1}")
-        return client
+        if API_KEYS[current_key_index]:
+            client = OpenAI(api_key=API_KEYS[current_key_index])
+            print(f"⚠️ Switched to backup OpenAI key #{current_key_index+1}")
+            return client
+        else:
+            raise AuthenticationError("No valid OpenAI keys available.")
+    
 
 # ---- PDF Extraction ----
 def extract_text_from_pdf(uploaded_file, max_pages=None):
@@ -173,7 +178,9 @@ def extract_text_from_pdf(uploaded_file, max_pages=None):
 # ---- AI Extraction ----
 def ai_extract_budget_info(text: str):
     """
-    Uses GPT to analyze PDF text and extract structured budget data.
+    Uses AI to analyze PDF text and extract structured budget data.
+    1. Try OpenAI (rotating keys if needed).
+    2. If all OpenAI keys fail, fallback to DeepSeek.
     """
     prompt = f"""
     You are a financial data analyst. Extract budget allocations for climate-related programmes
@@ -181,19 +188,52 @@ def ai_extract_budget_info(text: str):
     Return results as a clean JSON object with numeric values only.
     Text: {text[:3000]}
     """
+    # --- Try OpenAI ---
+    for _ in range(len(API_KEYS)):
+        try:
+            client = get_openai_client()
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a financial data analyst."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0
+            )
+            content = response.choices[0].message["content"]
+            return json.loads(content)
+        except (RateLimitError, AuthenticationError) as e:
+            print("⚠️ OpenAI key failed, rotating...", e)
+            # rotate and retry
+            continue
+        except Exception as e:
+            print("⚠️ OpenAI extraction error:", e)
+            break  # break to fallback
+
+    # --- Fallback: DeepSeek ---
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
+        deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        if not deepseek_key:
+            print("❌ No DeepSeek API key configured.")
+            return {}
+
+        headers = {"Authorization": f"Bearer {deepseek_key}", "Content-Type": "application/json"}
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [
                 {"role": "system", "content": "You are a financial data analyst."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0
-        )
-        content = response.choices[0].message["content"]
+            "temperature": 0
+        }
+
+        r = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=payload, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        content = data["choices"][0]["message"]["content"]
         return json.loads(content)
     except Exception as e:
-        print("AI extraction failed:", e)
+        print("❌ DeepSeek extraction failed:", e)
         return {}
 
 # ---- Helper: Clean numbers ----
