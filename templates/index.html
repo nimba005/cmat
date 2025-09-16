@@ -279,6 +279,65 @@
         setInterval(scrollFinancial, 4000);
       </script>
 
+      <!-- 🤖 Floating Chatbot Widget -->
+      <div id="chatbot-widget">
+        <button id="chatbot-toggle">💬</button>
+        <div id="chatbot-box" class="chatbot-box hidden">
+          <div id="chatbot-header">
+            <span>CMAT Assistant</span>
+            <button id="chatbot-close">✖</button>
+          </div>
+          <div id="chatbot-messages"></div>
+          <div class="chatbot-input">
+            <input type="text" id="chatbot-user-input" placeholder="Type your question...">
+            <button onclick="sendMessage()">Send</button>
+          </div>
+        </div>
+      </div>
+      <script>
+        // Toggle chatbot
+        const chatbotToggle = document.getElementById("chatbot-toggle");
+        const chatbotBox = document.getElementById("chatbot-box");
+        const chatbotClose = document.getElementById("chatbot-close");
+
+        chatbotToggle.addEventListener("click", () => {
+          chatbotBox.classList.toggle("hidden");
+        });
+        chatbotClose.addEventListener("click", () => {
+          chatbotBox.classList.add("hidden");
+        });
+
+        async function sendMessage() {
+          const input = document.getElementById("chatbot-user-input");
+          const msg = input.value.trim();
+          if (!msg) return;
+
+          const messagesDiv = document.getElementById("chatbot-messages");
+          messagesDiv.innerHTML += `<div class="message user">${msg}</div>`;
+          input.value = "";
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+          try {
+            const response = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ message: msg })
+            });
+            const data = await response.json();
+
+            if (data.reply) {
+              messagesDiv.innerHTML += `<div class="message bot">${data.reply}</div>`;
+            } else {
+              messagesDiv.innerHTML += `<div class="message bot">⚠️ Error: ${data.error}</div>`;
+            }
+          } catch (err) {
+            messagesDiv.innerHTML += `<div class="message bot">⚠️ Server error.</div>`;
+          }
+
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+      </script>
+
 
 
     {% elif page == "about" %}

@@ -184,6 +184,28 @@ def upload():
 
     return jsonify(response)
 
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    user_message = request.json.get("message")
+    if not user_message:
+        return jsonify({"error": "Message required"}), 400
+
+    try:
+        client = backend.get_client()
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant specialized in climate policy, finance, and adaptation in Zambia."},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.4
+        )
+        reply = response.choices[0].message["content"]
+        return jsonify({"reply": reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 
 # ------------------ RUN APP ------------------
 if __name__ == "__main__":
