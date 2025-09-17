@@ -128,6 +128,7 @@ def delete_event(username, event_id):
 load_dotenv()
 print("DEBUG: OPENAI_API_KEY_1 loaded?", bool(os.getenv("OPENAI_API_KEY_1")))
 print("DEBUG: OPENAI_API_KEY_2 loaded?", bool(os.getenv("OPENAI_API_KEY_2")))
+print("DEBUG: DEEPSEEK_API_KEY loaded?", bool(os.getenv("DEEPSEEK_API_KEY")))
 
 # ---- CMAT Indicators ----
 CMAT_INDICATORS = {
@@ -140,6 +141,9 @@ API_KEYS = [
     os.getenv("OPENAI_API_KEY_1"),
     os.getenv("OPENAI_API_KEY_2")
 ]
+
+# ---- DeepSeek Key ----
+DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 current_key_index = 0
 client = OpenAI(api_key=API_KEYS[current_key_index])

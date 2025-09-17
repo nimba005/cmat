@@ -199,7 +199,7 @@ def chat():
 
     # --- Try OpenAI first ---
     try:
-        client = backend.get_openai_client()
+        client = backend.get_client()   # ✅ FIXED: use the correct function
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -233,11 +233,15 @@ def chat():
         r = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=payload, timeout=30)
         r.raise_for_status()
         data = r.json()
-        reply = data["choices"][0]["message"]["content"]
+        print("DEBUG DeepSeek response:", data)  # ✅ add this to inspect format
+
+        # Safely extract reply
+        reply = data.get("choices", [{}])[0].get("message", {}).get("content", "⚠️ No reply content")
         return jsonify({"reply": reply})
     except Exception as e:
         print("❌ DeepSeek chat failed:", e)
         return jsonify({"error": "Both OpenAI and DeepSeek failed"}), 500
+
 
 
 
