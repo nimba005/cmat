@@ -14,9 +14,11 @@ bcrypt = Bcrypt()
 DB_PATH = "cmat.db"
 
 def init_db():
-    """Initialize SQLite database with users table if not exists."""
+    """Initialize SQLite database with required tables."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+
+    # Users table
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,8 +39,51 @@ def init_db():
         )
     """)
 
+    # ✅ Survey table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS survey_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            indicator TEXT NOT NULL,
+            value TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+
     conn.commit()
     conn.close()
+
+
+def save_survey_data(username, data):
+    """Save survey responses (dict of indicator:value)."""
+    user_id = get_user_id(username)
+    if not user_id:
+        return False
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # Remove old entries for clean overwrite
+    c.execute("DELETE FROM survey_data WHERE user_id=?", (user_id,))
+    for indicator, value in data.items():
+        c.execute("INSERT INTO survey_data (user_id, indicator, value) VALUES (?, ?, ?)",
+                  (user_id, indicator, value))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_survey_data(username):
+    """Fetch saved survey data for user."""
+    user_id = get_user_id(username)
+    if not user_id:
+        return {}
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT indicator, value FROM survey_data WHERE user_id=?", (user_id,))
+    rows = c.fetchall()
+    conn.close()
+    return {r[0]: r[1] for r in rows}
+
 
 def create_user(username, password):
     """Register a new user with hashed password."""

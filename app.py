@@ -73,7 +73,16 @@ def upload_page():
 def survey():
     if "user" not in session:
         return redirect("/login")
-    return render_template("index.html", page="survey")
+    print("DEBUG: survey route reached!")   # ✅ add this
+    survey_data = backend.get_survey_data(session["user"])
+    return render_template(
+        "index.html",
+        page="survey",
+        survey_data=survey_data,
+        indicators=backend.CMAT_INDICATORS
+    )
+
+
 
 @app.route("/calendar")
 def calendar():
@@ -107,6 +116,21 @@ def delete_event(event_id):
 
     success = backend.delete_event(session["user"], event_id)
     return jsonify({"success": success})
+
+@app.route("/api/survey", methods=["GET", "POST"])
+def survey_api():
+    if "user" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    if request.method == "POST":
+        data = request.json
+        success = backend.save_survey_data(session["user"], data)
+        return jsonify({"success": success})
+
+    # GET → return saved survey values
+    data = backend.get_survey_data(session["user"])
+    return jsonify(data)
+
 
 
 
@@ -181,6 +205,10 @@ def upload():
         "climate_programmes": climate_df.to_dict(orient="records") if climate_df is not None else None,
         "total_budget": total_budget,
     }
+
+    # ✅ Save extracted budget_info into survey DB
+    if "user" in session and budget_info:
+        backend.save_survey_data(session["user"], budget_info)
 
     return jsonify(response)
 

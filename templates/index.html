@@ -543,9 +543,37 @@
 
     {% elif page == "survey" %}
       <div class="section">
-        <h2>📝 CMAT Survey</h2>
-        <p>Manually enter or review extracted indicator values here. (Form integration coming soon)</p>
+        <h2>📝 Manual Survey Entry</h2>
+        <form id="survey-form">
+          {% for category, inds in indicators.items() %}
+            <h3>{{ category }}</h3>
+            {% for ind in inds %}
+              <label>{{ ind }}</label>
+              <input type="number" step="any" name="{{ ind }}"
+                    value="{{ survey_data.get(ind, '') }}">
+              <br>
+            {% endfor %}
+          {% endfor %}
+          <button type="submit">💾 Save Survey</button>
+        </form>
       </div>
+
+      <script>
+        document.getElementById("survey-form").addEventListener("submit", async function(e) {
+          e.preventDefault();
+          let data = {};
+          new FormData(this).forEach((value, key) => data[key] = parseFloat(value) || null);
+
+          const res = await fetch("/api/survey", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(data)
+          });
+          const result = await res.json();
+          alert(result.success ? "✅ Survey saved!" : "❌ Failed to save");
+        });
+      </script>
+
 
     {% elif page == "login" %}
       <div class="section">
