@@ -137,9 +137,6 @@ def survey_api():
 
 
 
-
-
-
 # ------------------ AUTH ROUTES ------------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():

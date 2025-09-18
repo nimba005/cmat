@@ -387,6 +387,55 @@ pre {
 .message.user { text-align: right; color: #007b5e; margin: 4px 0; }
 .message.bot { text-align: left; color: #333; margin: 4px 0; }
 
+/* Survey grid layout */
+.survey-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;  /* two columns */
+  gap: 15px 30px;
+  margin-bottom: 20px;
+}
+
+/* Each field container */
+.survey-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Compact input that grows as user types */
+.survey-input {
+  padding: 5px;
+  font-size: 0.9em;
+  width: 60px;              /* start small */
+  min-width: 50px;
+  max-width: 200px;
+  transition: width 0.2s ease;
+}
+
+.survey-input:focus {
+  outline: 2px solid #40916c;
+}
+
+.survey-input:not(:placeholder-shown) {
+  width: auto; /* auto-expand as numbers increase */
+}
+
+/* Save button styling */
+.survey-btn {
+  grid-column: span 2; /* full width button */
+  padding: 10px 15px;
+  background: #1b4332;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.survey-btn:hover {
+  background: #2d6a4f;
+}
+
+
 /* FOOTER */
 .footer {
   background: #1b4332;
