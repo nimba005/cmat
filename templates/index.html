@@ -23,6 +23,7 @@
       <a href="/about" class="nav-link">About</a>
       {% if session.get("user") %}
         <a href="/calendar" class="nav-link">Calendar</a>
+        <a href="/admin/projects" class="nav-link">Projects</a>
         <a href="/upload" class="nav-link">Upload Doc</a>
         <a href="/survey" class="nav-link">Survey</a>
         <a href="/logout" class="nav-link">Logout</a>
@@ -397,15 +398,15 @@
         </ul>
       </div>
 
-      <!-- SLIDESHOW DYNAMIC -->
+      <!-- ✅ PROJECTS WITH MODAL + MAP -->
       <div class="section">
         <h3>🏷 Featured National Climate Projects</h3>
         <div id="slideshow">
           {% for project in projects %}
-            <div class="slide {% if loop.first %}active{% endif %}">
-              <img src="{{ url_for('static', filename=project.img) }}" alt="{{ project.title }}">
+            <div class="slide {% if loop.first %}active{% endif %}" onclick="showProjectDetails({{ project|tojson }})">
+              <img src="{{ url_for('static', filename=project.image) }}" alt="{{ project.title }}">
               <h4>{{ project.title }}</h4>
-              <p>{{ project.desc }}</p>
+              <p>{{ project.description }}</p>
             </div>
           {% endfor %}
         </div>
@@ -415,26 +416,125 @@
         </div>
       </div>
 
+      <!-- Modal -->
+      <div id="projectModal" class="modal">
+        <div class="modal-content">
+          <span onclick="closeModal()" class="close">&times;</span>
+          <h3 id="modalTitle"></h3>
+          <p id="modalDesc"></p>
+          <p><strong>Start:</strong> <span id="modalStart"></span></p>
+          <p><strong>End:</strong> <span id="modalEnd"></span></p>
+          <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+          <p><strong>Budget:</strong> $<span id="modalBudget"></span></p>
+          <p><strong>Completion:</strong> <span id="modalPercent"></span>%</p>
+          <div id="map" style="height: 300px;"></div>
+        </div>
+      </div>
+
+      <!-- Scripts -->
       <script>
+        // Slideshow logic
         let slides = document.querySelectorAll("#slideshow .slide");
         let current = 0;
 
         function showSlide(index) {
           slides.forEach((s, i) => s.classList.toggle("active", i === index));
         }
-
         function nextSlide() {
           current = (current + 1) % slides.length;
           showSlide(current);
         }
-
         function prevSlide() {
           current = (current - 1 + slides.length) % slides.length;
           showSlide(current);
         }
-
         setInterval(nextSlide, 5000);
+
+        // Modal + Google Map
+        function showProjectDetails(project) {
+          document.getElementById("modalTitle").innerText = project.title;
+          document.getElementById("modalDesc").innerText = project.description;
+          document.getElementById("modalStart").innerText = project.start_date || "N/A";
+          document.getElementById("modalEnd").innerText = project.end_date || "Ongoing";
+          document.getElementById("modalStatus").innerText = project.status;
+          document.getElementById("modalBudget").innerText = project.budget?.toLocaleString() || "N/A";
+          document.getElementById("modalPercent").innerText = project.completion_percentage || 0;
+
+          document.getElementById("projectModal").style.display = "block";
+
+          // Google Map
+          let map = new google.maps.Map(document.getElementById("map"), {
+            center: {lat: project.latitude, lng: project.longitude},
+            zoom: 10
+          });
+
+          new google.maps.Marker({
+            position: {lat: project.latitude, lng: project.longitude},
+            map: map,
+            title: project.title
+          });
+        }
+        function closeModal() {
+          document.getElementById("projectModal").style.display = "none";
+        }
       </script>
+
+      <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+
+    {% elif page == "admin_projects" %}
+      <div class="section">
+        <h2>📊 Manage Projects</h2>
+
+        <!-- Add Project Form -->
+        <form method="POST" action="/admin/projects/add">
+          <input type="text" name="title" placeholder="Project Title" required>
+          <textarea name="description" placeholder="Description"></textarea>
+          <!-- Image Upload -->
+          <input type="file" name="image" accept="image/*" required>
+          <input type="number" step="any" name="latitude" placeholder="Latitude">
+          <input type="number" step="any" name="longitude" placeholder="Longitude">
+          <input type="date" name="start_date">
+          <input type="date" name="end_date">
+          <input type="number" step="any" name="budget" placeholder="Budget">
+          <input type="text" name="status" placeholder="Status">
+          <input type="number" step="any" name="completion_percentage" placeholder="% Complete">
+          <button type="submit">➕ Add Project</button>
+        </form>
+
+        <!-- Existing Projects -->
+        <h3>Existing Projects</h3>
+        <table border="1">
+          <tr>
+            <th>Title</th>
+            <th>Budget</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+          {% for p in projects %}
+          <tr>
+            <td>{{ p.title }}</td>
+            <td>{{ p.budget }}</td>
+            <td>{{ p.status }}</td>
+            <td>
+              <!-- Update Form -->
+              <form method="POST" action="/admin/projects/update/{{ p.id }}" style="display:inline;">
+                <input type="text" name="title" value="{{ p.title }}">
+                <input type="number" step="any" name="budget" value="{{ p.budget }}">
+                <input type="text" name="status" value="{{ p.status }}">
+                <button type="submit">✏️ Update</button>
+              </form>
+
+              <!-- Delete -->
+              <form method="POST" action="/admin/projects/delete/{{ p.id }}" style="display:inline;">
+                <button type="submit">🗑️ Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+
+
 
     {% elif page == "calendar" %}
       <div class="section">

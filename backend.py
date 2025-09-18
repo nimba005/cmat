@@ -39,7 +39,7 @@ def init_db():
         )
     """)
 
-    # ✅ Survey table
+    # Survey table
     c.execute("""
         CREATE TABLE IF NOT EXISTS survey_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,8 +50,26 @@ def init_db():
         )
     """)
 
+    # Projects table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            image TEXT,
+            latitude REAL,
+            longitude REAL,
+            start_date TEXT,
+            end_date TEXT,
+            budget REAL,
+            status TEXT,
+            completion_percentage REAL
+        )
+    """)
+
     conn.commit()
-    conn.close()
+    conn.close()   # ✅ only once, after ALL tables are created
+
 
 
 def save_survey_data(username, data):
@@ -182,6 +200,65 @@ def delete_event(username, event_id):
     deleted = c.rowcount > 0  # True if any row was deleted
     conn.close()
     return deleted
+
+
+def get_projects():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT * FROM projects")
+    rows = c.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": r[0],
+            "title": r[1],
+            "description": r[2],
+            "image": r[3],
+            "latitude": r[4],
+            "longitude": r[5],
+            "start_date": r[6],
+            "end_date": r[7],
+            "budget": r[8],
+            "status": r[9],
+            "completion_percentage": r[10]
+        }
+        for r in rows
+    ]
+
+
+def add_project(title, description, image, latitude, longitude, start_date, end_date, budget, status, completion_percentage):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO projects (title, description, image, latitude, longitude, start_date, end_date, budget, status, completion_percentage)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (title, description, image, latitude, longitude, start_date, end_date, budget, status, completion_percentage))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def update_project(project_id, title, description, image, latitude, longitude, start_date, end_date, budget, status, completion_percentage):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        UPDATE projects
+        SET title=?, description=?, image=?, latitude=?, longitude=?, start_date=?, end_date=?, budget=?, status=?, completion_percentage=?
+        WHERE id=?
+    """, (title, description, image, latitude, longitude, start_date, end_date, budget, status, completion_percentage, project_id))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def delete_project(project_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM projects WHERE id=?", (project_id,))
+    conn.commit()
+    conn.close()
+    return True
 
 
 

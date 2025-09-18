@@ -1,8 +1,21 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, flash, send_from_directory
 import backend
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # change to env variable in production
+
+
+UPLOAD_FOLDER = os.path.join("static", "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # ------------------ NAVIGATION ROUTES ------------------
 @app.route("/")
@@ -11,49 +24,76 @@ def home():
 
 @app.route("/about")
 def about():
-    projects = [
-        {
-            "title": "Chisamba Solar Power Plant (100 MW)",
-            "desc": "Commissioned June 2025; helps diversify Zambia’s energy mix away from hydropower.",
-            "img": "images/chisamba.jpg"
-        },
-        {
-            "title": "Itimpi Solar Power Station (60 MW)",
-            "desc": "Kitwe-based solar farm addressing electricity shortages, commissioned April 2024.",
-            "img": "images/itimpi.jpg"
-        },
-        {
-            "title": "Zambia Riverside Solar Power Station (34 MW)",
-            "desc": "Expanded solar farm in Kitwe operational since February 2023.",
-            "img": "images/riverside.jpg"
-        },
-        {
-            "title": "Growing Greener Project (Simalaha Conservancy)",
-            "desc": "Community-led project building resilience, combating desertification and boosting biodiversity.",
-            "img": "images/greener.jpg"
-        },
-        {
-            "title": "Strengthening Climate Resilience in the Barotse Sub-basin",
-            "desc": "CIF/World Bank-supported effort (2013–2022) to enhance local adaptation capacity.",
-            "img": "images/barotse.jpg"
-        },
-        {
-            "title": "Early Warning Systems Project",
-            "desc": "UNDP-GEF initiative building Zambia’s hydro-meteorological monitoring infrastructure.",
-            "img": "images/earlywarning.jpg"
-        },
-        {
-            "title": "National Adaptation Programme of Action (NAPA)",
-            "desc": "Targeted adaptation interventions prioritizing vulnerable sectors.",
-            "img": "images/napa.jpg"
-        },
-        {
-            "title": "NDC Implementation Framework",
-            "desc": "₮17.2 B Blueprint (2023–2030) aligning mitigation/adaptation with national development goals.",
-            "img": "images/ndc.jpg"
-        }
-    ]
+    # ✅ Fetch projects from database instead of hardcoding
+    projects = backend.get_projects()
     return render_template("index.html", page="about", projects=projects)
+
+
+@app.route("/api/projects")
+def api_projects():
+    # ✅ API endpoint that returns projects as JSON (for AJAX, maps, etc.)
+    return jsonify(backend.get_projects())
+
+
+@app.route("/admin/projects")
+def admin_projects():
+    if "user" not in session:
+        return redirect("/login")
+    projects = backend.get_projects()
+    return render_template("index.html", page="admin_projects", projects=projects)
+
+
+@app.route("/admin/projects/add", methods=["POST"])
+def add_project():
+    data = request.form
+    image_file = request.files.get("image")
+    image_path = None
+
+    if image_file and allowed_file(image_file.filename):
+        filename = secure_filename(image_file.filename)
+        image_path = os.path.join("uploads", filename)  # relative to static/
+        image_file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+    backend.add_project(
+        data.get("title"),
+        data.get("description"),
+        image_path or "uploads/default.jpg",  # fallback image
+        float(data.get("latitude") or 0),
+        float(data.get("longitude") or 0),
+        data.get("start_date"),
+        data.get("end_date"),
+        float(data.get("budget") or 0),
+        data.get("status"),
+        float(data.get("completion_percentage") or 0)
+    )
+    return redirect("/admin/projects")
+
+
+@app.route("/admin/projects/update/<int:project_id>", methods=["POST"])
+def update_project(project_id):
+    data = request.form
+    backend.update_project(
+        project_id,
+        data.get("title"),
+        data.get("description"),
+        data.get("image"),
+        float(data.get("latitude") or 0),
+        float(data.get("longitude") or 0),
+        data.get("start_date"),
+        data.get("end_date"),
+        float(data.get("budget") or 0),
+        data.get("status"),
+        float(data.get("completion_percentage") or 0)
+    )
+    return redirect("/admin/projects")
+
+
+@app.route("/admin/projects/delete/<int:project_id>", methods=["POST"])
+def delete_project(project_id):
+    backend.delete_project(project_id)
+    return redirect("/admin/projects")
+
+
 
 
 # ------------------ DOCS ROUTE ------------------
