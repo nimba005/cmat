@@ -545,6 +545,11 @@
       <div class="section">
         <h2>📝 Manual Survey Entry</h2>
         <form id="survey-form">
+          <div class="section">
+            <h3>📊 Survey Results</h3>
+            <div id="surveyChart"></div>
+          </div>
+
           {% for category, inds in indicators.items() %}
             <h3>{{ category }}</h3>
             {% for ind in inds %}
@@ -570,9 +575,52 @@
             body: JSON.stringify(data)
           });
           const result = await res.json();
-          alert(result.success ? "✅ Survey saved!" : "❌ Failed to save");
+
+          if (result.success) {
+            console.log("Survey results:", result.results);
+
+            // Reuse upload charts function
+            if (typeof renderCharts === "function") {
+              renderCharts(result.results);
+            } else {
+              console.warn("renderCharts function not found — add or import it here.");
+            }
+          } else {
+            alert("❌ Failed to save");
+          }
         });
       </script>
+
+      <script>
+        function renderCharts(results) {
+          console.log("Rendering charts with results:", results);
+
+          // Example: assume results is an object { "Indicator1": value1, "Indicator2": value2, ... }
+          const labels = Object.keys(results || {});
+          const values = Object.values(results || {});
+
+          if (!labels.length) {
+            console.warn("No results to render.");
+            return;
+          }
+
+          Plotly.newPlot("surveyChart", [{
+            x: labels,
+            y: values,
+            type: "bar",
+            text: values,
+            textposition: "outside",
+            marker: { color: "rgba(54, 162, 235, 0.7)" }
+          }], {
+            title: "Survey Results",
+            xaxis: { title: "Indicators" },
+            yaxis: { title: "Values", zeroline: false }
+          });
+        }
+      </script>
+
+
+
 
 
     {% elif page == "login" %}

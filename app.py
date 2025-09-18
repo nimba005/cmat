@@ -125,7 +125,11 @@ def survey_api():
     if request.method == "POST":
         data = request.json
         success = backend.save_survey_data(session["user"], data)
-        return jsonify({"success": success})
+
+        # Process survey into results (like /upload)
+        results = backend.process_survey_results(data)
+
+        return jsonify({"success": success, "results": results})
 
     # GET → return saved survey values
     data = backend.get_survey_data(session["user"])

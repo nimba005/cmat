@@ -84,6 +84,23 @@ def get_survey_data(username):
     conn.close()
     return {r[0]: r[1] for r in rows}
 
+def process_survey_results(data: dict):
+    """
+    Take raw survey responses and return results in the same format as /upload.
+    """
+    cleaned = {k: clean_numeric_value(v) for k, v in data.items() if v}
+
+    # Build the same response shape as /upload
+    response = {
+        "budget_info": cleaned,
+        "agriculture": None,           # you could later extend to specific categories
+        "agriculture_totals": None,
+        "climate_programmes": None,
+        "total_budget": cleaned.get("Total Budget"),
+    }
+    return response
+
+
 
 def create_user(username, password):
     """Register a new user with hashed password."""
