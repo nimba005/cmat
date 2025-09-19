@@ -402,9 +402,11 @@
         </ul>
       </div>
 
-      <!-- ✅ PROJECTS WITH MODAL + MAP -->
+      <!-- ✅ FEATURED PROJECTS WITH IMAGE + DETAILS + MAP -->
       <div class="section">
         <h3>🏷 Featured National Climate Projects</h3>
+
+        <!-- Static Grid Layout -->
         <div class="projects-container">
           {% for project in projects %}
             <div class="project-card">
@@ -446,10 +448,11 @@
               .addTo(map)
               .bindPopup(`<b>${p.title}</b><br>${p.description}`);
           } else {
-            console.warn(`No valid coordinates for project: ${p.title}`);
+            console.warn(`⚠️ No valid coordinates for project: ${p.title}`);
           }
         });
       </script>
+
 
     {% elif page == "admin_projects" %}
       <div class="section">
