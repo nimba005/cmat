@@ -5,6 +5,10 @@
   <title>🌍 CMAT Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -428,14 +432,22 @@
           <p><strong>Budget:</strong> $<span id="modalBudget"></span></p>
           <p><strong>Completion:</strong> <span id="modalPercent"></span>%</p>
           <div id="map" style="height: 300px;"></div>
+
+          <!-- Carousel Controls -->
+          <div class="slideshow-controls">
+            <button onclick="prevProject()">⬅️ Prev Project</button>
+            <button onclick="nextProject()">Next Project ➡️</button>
+          </div>
         </div>
       </div>
 
-      <!-- Scripts -->
       <script>
         // Slideshow logic
         let slides = document.querySelectorAll("#slideshow .slide");
         let current = 0;
+        let currentProjectIndex = 0;
+        let allProjects = {{ projects|tojson }};  // pass all projects to JS
+        let map, marker;
 
         function showSlide(index) {
           slides.forEach((s, i) => s.classList.toggle("active", i === index));
@@ -450,7 +462,7 @@
         }
         setInterval(nextSlide, 5000);
 
-        // Modal + Google Map
+        // Modal + Leaflet Map
         function showProjectDetails(project) {
           document.getElementById("modalTitle").innerText = project.title;
           document.getElementById("modalDesc").innerText = project.description;
@@ -462,24 +474,35 @@
 
           document.getElementById("projectModal").style.display = "block";
 
-          // Google Map
-          let map = new google.maps.Map(document.getElementById("map"), {
-            center: {lat: project.latitude, lng: project.longitude},
-            zoom: 10
-          });
-
-          new google.maps.Marker({
-            position: {lat: project.latitude, lng: project.longitude},
-            map: map,
-            title: project.title
-          });
+          // Initialize or update map
+          if (!map) {
+            map = L.map('map').setView([project.latitude, project.longitude], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            marker = L.marker([project.latitude, project.longitude]).addTo(map);
+          } else {
+            map.setView([project.latitude, project.longitude], 10);
+            marker.setLatLng([project.latitude, project.longitude])
+              .bindPopup(project.title)
+              .openPopup();
+          }
         }
+
+        function nextProject() {
+          currentProjectIndex = (currentProjectIndex + 1) % allProjects.length;
+          showProjectDetails(allProjects[currentProjectIndex], currentProjectIndex);
+        }
+
+        function prevProject() {
+          currentProjectIndex = (currentProjectIndex - 1 + allProjects.length) % allProjects.length;
+          showProjectDetails(allProjects[currentProjectIndex], currentProjectIndex);
+        }
+
         function closeModal() {
           document.getElementById("projectModal").style.display = "none";
         }
       </script>
-
-      <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
 
     {% elif page == "admin_projects" %}
       <div class="section">
