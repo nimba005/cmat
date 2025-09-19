@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, flash, send_from_directory
+from flask import Flask, render_template, request, jsonify, session, redirect, flash, send_from_directory, url_for
 import backend
 import os
 from werkzeug.utils import secure_filename
@@ -7,16 +7,7 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"  # change to env variable in production
 
 
-UPLOAD_FOLDER = os.path.join("static", "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
+# ------------------ PROJECT ROUTES ------------------
 # ------------------ NAVIGATION ROUTES ------------------
 @app.route("/")
 def home():
@@ -34,6 +25,15 @@ def api_projects():
     # ✅ API endpoint that returns projects as JSON (for AJAX, maps, etc.)
     return jsonify(backend.get_projects())
 
+# ✅ Configure uploads folder for project images
+UPLOAD_FOLDER = os.path.join("static", "images")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @app.route("/admin/projects")
 def admin_projects():
@@ -45,53 +45,85 @@ def admin_projects():
 
 @app.route("/admin/projects/add", methods=["POST"])
 def add_project():
-    data = request.form
-    image_file = request.files.get("image")
-    image_path = None
+    title = request.form.get("title")
+    description = request.form.get("description")
+    budget = float(request.form.get("budget") or 0)
+    status = request.form.get("status")
+    latitude = float(request.form.get("latitude") or 0)
+    longitude = float(request.form.get("longitude") or 0)
+    start_date = request.form.get("start_date")
+    end_date = request.form.get("end_date")
+    completion_percentage = float(request.form.get("completion_percentage") or 0)
 
+    image_file = request.files.get("image")
     if image_file and allowed_file(image_file.filename):
         filename = secure_filename(image_file.filename)
-        image_path = os.path.join("uploads", filename)  # relative to static/
         image_file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        image_path = f"images/{filename}"   # ✅ stored relative to /static
+    else:
+        image_path = "images/default.jpg"   # fallback image
 
+    # ✅ Save to your backend DB
     backend.add_project(
-        data.get("title"),
-        data.get("description"),
-        image_path or "uploads/default.jpg",  # fallback image
-        float(data.get("latitude") or 0),
-        float(data.get("longitude") or 0),
-        data.get("start_date"),
-        data.get("end_date"),
-        float(data.get("budget") or 0),
-        data.get("status"),
-        float(data.get("completion_percentage") or 0)
+        title,
+        description,
+        image_path,
+        latitude,
+        longitude,
+        start_date,
+        end_date,
+        budget,
+        status,
+        completion_percentage
     )
-    return redirect("/admin/projects")
+
+    flash("✅ Project added successfully!", "success")
+    return redirect(url_for("admin_projects"))
 
 
 @app.route("/admin/projects/update/<int:project_id>", methods=["POST"])
 def update_project(project_id):
-    data = request.form
+    title = request.form.get("title")
+    description = request.form.get("description")
+    budget = float(request.form.get("budget") or 0)
+    status = request.form.get("status")
+    latitude = float(request.form.get("latitude") or 0)
+    longitude = float(request.form.get("longitude") or 0)
+    start_date = request.form.get("start_date")
+    end_date = request.form.get("end_date")
+    completion_percentage = float(request.form.get("completion_percentage") or 0)
+
+    # ✅ Allow updating image if a new one is uploaded
+    image_file = request.files.get("image")
+    if image_file and allowed_file(image_file.filename):
+        filename = secure_filename(image_file.filename)
+        image_file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        image_path = f"images/{filename}"
+    else:
+        image_path = request.form.get("current_image")  # keep old if none uploaded
+
     backend.update_project(
         project_id,
-        data.get("title"),
-        data.get("description"),
-        data.get("image"),
-        float(data.get("latitude") or 0),
-        float(data.get("longitude") or 0),
-        data.get("start_date"),
-        data.get("end_date"),
-        float(data.get("budget") or 0),
-        data.get("status"),
-        float(data.get("completion_percentage") or 0)
+        title,
+        description,
+        image_path,
+        latitude,
+        longitude,
+        start_date,
+        end_date,
+        budget,
+        status,
+        completion_percentage
     )
-    return redirect("/admin/projects")
+    flash("✅ Project updated successfully!", "success")
+    return redirect(url_for("admin_projects"))
 
 
 @app.route("/admin/projects/delete/<int:project_id>", methods=["POST"])
 def delete_project(project_id):
     backend.delete_project(project_id)
-    return redirect("/admin/projects")
+    flash("🗑️ Project deleted!", "info")
+    return redirect(url_for("admin_projects"))
 
 
 

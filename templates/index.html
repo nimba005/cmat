@@ -404,7 +404,7 @@
         <div id="slideshow">
           {% for project in projects %}
             <div class="slide {% if loop.first %}active{% endif %}" onclick="showProjectDetails({{ project|tojson }})">
-              <img src="{{ url_for('static', filename=project.image) }}" alt="{{ project.title }}">
+              <img src="{{ url_for('static', filename=project.image or 'images/default.jpg') }}" alt="{{ project.title }}">
               <h4>{{ project.title }}</h4>
               <p>{{ project.description }}</p>
             </div>
@@ -486,7 +486,7 @@
         <h2>📊 Manage Projects</h2>
 
         <!-- Add Project Form -->
-        <form method="POST" action="/admin/projects/add">
+        <form method="POST" action="/admin/projects/add" enctype="multipart/form-data">
           <input type="text" name="title" placeholder="Project Title" required>
           <textarea name="description" placeholder="Description"></textarea>
           <!-- Image Upload -->
