@@ -405,103 +405,50 @@
       <!-- ✅ PROJECTS WITH MODAL + MAP -->
       <div class="section">
         <h3>🏷 Featured National Climate Projects</h3>
-        <div id="slideshow">
+        <div class="projects-container">
           {% for project in projects %}
-            <div class="slide {% if loop.first %}active{% endif %}" onclick="showProjectDetails({{ project|tojson }})">
-              <img src="{{ url_for('static', filename=project.image or 'images/default.jpg') }}" alt="{{ project.title }}">
-              <h4>{{ project.title }}</h4>
-              <p>{{ project.description }}</p>
+            <div class="project-card">
+              <!-- Project Image -->
+              <img src="{{ url_for('static', filename=project.image or 'images/default.jpg') }}" 
+                  alt="{{ project.title }}" 
+                  class="project-img">
+
+              <!-- Project Details -->
+              <div class="project-details">
+                <h3>{{ project.title }}</h3>
+                <p>{{ project.description }}</p>
+                <p><strong>Start:</strong> {{ project.start_date }}</p>
+                <p><strong>End:</strong> {{ project.end_date }}</p>
+                <p><strong>Status:</strong> {{ project.status }}</p>
+                <p><strong>Budget:</strong> ${{ "{:,.2f}".format(project.budget) }}</p>
+                <p><strong>Completion:</strong> {{ project.completion_percentage }}%</p>
+              </div>
+
+              <!-- Embedded Map -->
+              <div id="map-{{ project.id }}" class="project-map"></div>
             </div>
           {% endfor %}
-        </div>
-        <div class="slideshow-controls">
-          <button onclick="prevSlide()">⬅️ Prev</button>
-          <button onclick="nextSlide()">Next ➡️</button>
-        </div>
-      </div>
-
-      <!-- Modal -->
-      <div id="projectModal" class="modal">
-        <div class="modal-content">
-          <span onclick="closeModal()" class="close">&times;</span>
-          <h3 id="modalTitle"></h3>
-          <p id="modalDesc"></p>
-          <p><strong>Start:</strong> <span id="modalStart"></span></p>
-          <p><strong>End:</strong> <span id="modalEnd"></span></p>
-          <p><strong>Status:</strong> <span id="modalStatus"></span></p>
-          <p><strong>Budget:</strong> $<span id="modalBudget"></span></p>
-          <p><strong>Completion:</strong> <span id="modalPercent"></span>%</p>
-          <div id="map" style="height: 300px;"></div>
-
-          <!-- Carousel Controls -->
-          <div class="slideshow-controls">
-            <button onclick="prevProject()">⬅️ Prev Project</button>
-            <button onclick="nextProject()">Next Project ➡️</button>
-          </div>
         </div>
       </div>
 
       <script>
-        // Slideshow logic
-        let slides = document.querySelectorAll("#slideshow .slide");
-        let current = 0;
-        let currentProjectIndex = 0;
-        let allProjects = {{ projects|tojson }};  // pass all projects to JS
-        let map, marker;
+        const projects = {{ projects|tojson }};
 
-        function showSlide(index) {
-          slides.forEach((s, i) => s.classList.toggle("active", i === index));
-        }
-        function nextSlide() {
-          current = (current + 1) % slides.length;
-          showSlide(current);
-        }
-        function prevSlide() {
-          current = (current - 1 + slides.length) % slides.length;
-          showSlide(current);
-        }
-        setInterval(nextSlide, 5000);
+        projects.forEach(p => {
+          if (p.latitude && p.longitude) {
+            const map = L.map(`map-${p.id}`).setView([p.latitude, p.longitude], 10);
 
-        // Modal + Leaflet Map
-        function showProjectDetails(project) {
-          document.getElementById("modalTitle").innerText = project.title;
-          document.getElementById("modalDesc").innerText = project.description;
-          document.getElementById("modalStart").innerText = project.start_date || "N/A";
-          document.getElementById("modalEnd").innerText = project.end_date || "Ongoing";
-          document.getElementById("modalStatus").innerText = project.status;
-          document.getElementById("modalBudget").innerText = project.budget?.toLocaleString() || "N/A";
-          document.getElementById("modalPercent").innerText = project.completion_percentage || 0;
-
-          document.getElementById("projectModal").style.display = "block";
-
-          // Initialize or update map
-          if (!map) {
-            map = L.map('map').setView([project.latitude, project.longitude], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; OpenStreetMap'
+              attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
-            marker = L.marker([project.latitude, project.longitude]).addTo(map);
+
+            L.marker([p.latitude, p.longitude])
+              .addTo(map)
+              .bindPopup(`<b>${p.title}</b><br>${p.description}`);
           } else {
-            map.setView([project.latitude, project.longitude], 10);
-            marker.setLatLng([project.latitude, project.longitude])
-              .bindPopup(project.title)
-              .openPopup();
+            console.warn(`No valid coordinates for project: ${p.title}`);
           }
-        }
-
-        function nextProject() {
-          currentProjectIndex = (currentProjectIndex + 1) % allProjects.length;
-          showProjectDetails(allProjects[currentProjectIndex], currentProjectIndex);
-        }
-
-        function prevProject() {
-          currentProjectIndex = (currentProjectIndex - 1 + allProjects.length) % allProjects.length;
-          showProjectDetails(allProjects[currentProjectIndex], currentProjectIndex);
-        }
-
-        function closeModal() {
-          document.getElementById("projectModal").style.display = "none";
-        }
+        });
       </script>
 
     {% elif page == "admin_projects" %}

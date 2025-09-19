@@ -207,40 +207,6 @@ pre {
   text-decoration: underline;
 }
 
-
-/* SLIDESHOW */
-#slideshow {
-  position: relative;
-  max-width: 700px;
-  margin: auto;
-}
-
-.slide {
-  display: none;
-  text-align: center;
-}
-
-.slide.active {
-  display: block;
-}
-
-.slide img {
-  width: 100%;
-  height: 350px;       /* fixed consistent height */
-  object-fit: cover;   /* crop/scale image to fill box nicely */
-  border-radius: 10px;
-  margin-bottom: 10px;
-}
-
-.slideshow-controls {
-  text-align: center;
-  margin-top: 10px;
-}
-
-.slideshow-controls button {
-  margin: 5px;
-}
-
 /* CAROUSEL */
 .carousel-container {
   position: relative;
@@ -278,9 +244,10 @@ pre {
 .carousel-card img {
   width: 100%;
   height: 160px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 8px;
   margin-bottom: 12px;
+  background: #f8f9fa; /* optional: adds a light background for padding gaps */
 }
 
 .carousel-card h3 {
@@ -307,6 +274,32 @@ pre {
 
 .carousel-btn:hover {
   background: #40916c;
+}
+
+.project-card {
+  width: 400px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+  margin: 15px auto;
+  background: #fff;
+}
+
+.project-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.project-details {
+  padding: 15px;
+  font-size: 14px;
+}
+
+.project-map {
+  height: 250px;
+  width: 100%;
 }
 
 
