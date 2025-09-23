@@ -39,8 +39,12 @@ def allowed_file(filename):
 def admin_projects():
     if "user" not in session:
         return redirect("/login")
+    if session.get("role") != "admin":
+        flash("🚫 Access denied: Admins only", "error")
+        return redirect("/")
     projects = backend.get_projects()
     return render_template("index.html", page="admin_projects", projects=projects)
+
 
 
 @app.route("/admin/projects/add", methods=["POST"])
@@ -79,6 +83,7 @@ def add_project():
 
     flash("✅ Project added successfully!", "success")
     return redirect(url_for("admin_projects"))
+
 
 
 @app.route("/admin/projects/update/<int:project_id>", methods=["POST"])
@@ -215,8 +220,10 @@ def signup():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-        if backend.create_user(username, password):
+        role = request.form.get("role")  # NEW
+        if backend.create_user(username, password, role):
             session["user"] = username
+            session["role"] = role
             flash("Signup successful! You are now logged in.", "success")
             return redirect("/")
         else:
@@ -225,14 +232,17 @@ def signup():
     return render_template("index.html", page="signup")
 
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-        if backend.verify_user(username, password):
+        role = backend.verify_user(username, password)
+        if role:
             session["user"] = username
-            flash("Login successful!", "success")
+            session["role"] = role
+            flash(f"Login successful! Welcome {role.title()}", "success")
             return redirect("/")
         else:
             flash("Invalid credentials.", "error")
@@ -262,21 +272,11 @@ def upload():
     # Extract budgets (combined)
     budget_info = backend.extract_combined_budget_info(text)
 
-    # Extract agriculture budget
-    agri_df, agri_totals = backend.extract_agriculture_budget(text)
-
-    # Extract climate programmes
-    climate_df = backend.extract_climate_programmes(text)
-
-    # Extract total budget
-    total_budget = backend.extract_total_budget(text)
-
+    # 3️⃣ Build response
     response = {
-        "budget_info": budget_info,
-        "agriculture": agri_df.to_dict(orient="records") if agri_df is not None else None,
-        "agriculture_totals": agri_totals,
-        "climate_programmes": climate_df.to_dict(orient="records") if climate_df is not None else None,
-        "total_budget": total_budget,
+        "total_budget": budget_info.get("Total Budget"),
+        "budget_info": budget_info,   # sector allocations
+        "climate_programmes": budget_info.get("Climate Projects"),
     }
 
     # ✅ Save extracted budget_info into survey DB
@@ -315,6 +315,7 @@ def chat():
         print("⚠️ OpenAI chat failed, falling back to DeepSeek:", e)
 
     # --- Fallback: DeepSeek ---
+     # --- Fallback: DeepSeek ---
     try:
         import requests, os
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
@@ -342,10 +343,6 @@ def chat():
     except Exception as e:
         print("❌ DeepSeek chat failed:", e)
         return jsonify({"error": "Both OpenAI and DeepSeek failed"}), 500
-
-
-
-
 
 # ------------------ RUN APP ------------------
 if __name__ == "__main__":
