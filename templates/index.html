@@ -32,6 +32,7 @@
     
         {% if session.get("role") == "admin" %}
           <a href="/admin/projects" class="nav-link">Manage Projects</a>
+          <a href="/admin/news" class="nav-link">Manage News</a>
         {% endif %}
     
         <a href="/logout" class="nav-link">Logout</a>
@@ -170,42 +171,27 @@
       </script>
 
 
-
-
-
       <!-- NEW: News & Articles Section -->
       <div class="section">
         <h2>📰 News & Articles</h2>
         <p>Always up to date with our latest News and Articles</p>
 
         <div class="news-grid">
-
-          <div class="news-card">
-            <img src="{{ url_for('static', filename='images/blog1.jpg') }}" alt="Blog Image">
-            <h3>Report of the Committee on Agriculture</h3>
-            <small>Posted by parliamentary • September 2025</small>
-            <p>Examining the effects of climate change on agriculture, lands and natural resources in Zambia.</p>
-            <a href="{{ url_for('download_file', filename='Report of the Committee on Agriculture, Lands and Natural Resources on Carbon Markets and Trading in Zambia.pdf') }}" target="_blank">Read More</a>
-          </div>
-
-          <div class="news-card">
-            <img src="{{ url_for('static', filename='images/blog2.jpg') }}" alt="Blog Image">
-            <h3>This is the latest News Content</h3>
-            <small>Posted by Admin • March 2024</small>
-            <p>Lorem ipsum dolor sit amet, consectetur de adipisicing elit, sed do eiusmod tempore incididunt ut labore et dolore magna.</p>
-            <a href="{{ url_for('download_file', filename='news2.pdf') }}" target="_blank">Read More</a>
-          </div>
-
-          <div class="news-card">
-            <img src="{{ url_for('static', filename='images/blog3.jpg') }}" alt="Blog Image">
-            <h3>This is the latest News Content</h3>
-            <small>Posted by Admin • March 2024</small>
-            <p>Lorem ipsum dolor sit amet, consectetur de adipisicing elit, sed do eiusmod tempore incididunt ut labore et dolore magna.</p>
-            <a href="{{ url_for('download_file', filename='news3.pdf') }}" target="_blank">Read More</a>
-          </div>
-
+          {% for n in news %}
+            <div class="news-card">
+              {% if n.image %}
+                <img src="{{ url_for('static', filename=n.image) }}" alt="News Image">
+              {% endif %}
+              <h3>{{ n.title }}</h3>
+              <small>Posted by {{ n.posted_by }} • {{ n.created_at }}</small>
+              <p>{{ n.content[:150] }}...</p>
+              <a href="{{ url_for('news_detail', news_id=n.id) }}">Read more →</a>
+            </div>
+          {% endfor %}
         </div>
       </div>
+
+
 
       <!-- 📊 FINANCIAL DOCUMENTS SECTION -->
       <div class="section">
@@ -510,6 +496,60 @@
           {% endfor %}
         </table>
       </div>
+
+    {% elif page == "admin_news" %}
+      <div class="section">
+        <h2>📰 Manage News</h2>
+
+        <!-- Add News Form -->
+        <form method="POST" action="/admin/news/add" enctype="multipart/form-data">
+          <input type="text" name="title" placeholder="News Title" required>
+          <textarea name="content" placeholder="News content"></textarea>
+          <input type="file" name="image" accept="image/*">
+          <button type="submit">➕ Post News</button>
+        </form>
+
+        <!-- Existing News -->
+        <h3>Existing News</h3>
+        <ul>
+          {% for n in news %}
+            <li>
+              <!-- Title clickable -->
+              <a href="{{ url_for('news_detail', news_id=n.id) }}">
+                <strong>{{ n.title }}</strong>
+              </a> 
+              ({{ n.created_at }})  
+
+              <p>{{ n.content[:200] }}... 
+                <a href="{{ url_for('news_detail', news_id=n.id) }}">Read more →</a>
+              </p>
+
+              {% if n.image %}
+                <img src="{{ url_for('static', filename=n.image) }}" width="120">
+              {% endif %}
+
+              <form method="POST" action="/admin/news/delete/{{ n.id }}">
+                <button type="submit">🗑️ Delete</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+    {% elif page == "news_detail" %}
+      <div class="section">
+        <h2>{{ news.title }}</h2>
+        <small>Posted by {{ news.posted_by }} • {{ news.created_at }}</small>
+
+        {% if news.image %}
+          <img src="{{ url_for('static', filename=news.image) }}" alt="News Image" style="max-width: 400px; margin: 10px 0;">
+        {% endif %}
+
+        <p>{{ news.content }}</p>
+
+        <a href="/">← Back to News</a>
+      </div>
+
 
 
 

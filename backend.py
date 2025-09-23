@@ -18,6 +18,19 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
+        # News table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS news (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT,
+            image TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            posted_by TEXT
+        )
+    """)
+
+
     # Create users table if not exists
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -86,6 +99,48 @@ def init_db():
 
     conn.commit()
     conn.close()   # ✅ only once, after ALL tables are created
+
+def get_news():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, title, content, image, created_at, posted_by FROM news ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
+    return [{"id": r[0], "title": r[1], "content": r[2], "image": r[3], "created_at": r[4], "posted_by": r[5]} for r in rows]
+
+def get_news_by_id(news_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, title, content, image, created_at, posted_by FROM news WHERE id=?", (news_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            "id": row[0],
+            "title": row[1],
+            "content": row[2],
+            "image": row[3],
+            "created_at": row[4],
+            "posted_by": row[5]
+        }
+    return None
+
+def add_news(title, content, image, posted_by):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO news (title, content, image, posted_by) VALUES (?, ?, ?, ?)", 
+              (title, content, image, posted_by))
+    conn.commit()
+    conn.close()
+    return True
+
+def delete_news(news_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM news WHERE id=?", (news_id,))
+    conn.commit()
+    conn.close()
+    return True
 
 
 

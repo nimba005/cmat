@@ -7,11 +7,57 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"  # change to env variable in production
 
 
-# ------------------ PROJECT ROUTES ------------------
 # ------------------ NAVIGATION ROUTES ------------------
+@app.route("/admin/news")
+def admin_news():
+    if "user" not in session or session.get("role") != "admin":
+        return redirect("/login")
+    news = backend.get_news()
+    return render_template("index.html", page="admin_news", news=news)
+
+@app.route("/admin/news/add", methods=["POST"])
+def add_news():
+    if "user" not in session or session.get("role") != "admin":
+        return redirect("/login")
+
+    title = request.form.get("title")
+    content = request.form.get("content")
+    image_file = request.files.get("image")
+
+    image_path = None
+    if image_file:
+        from werkzeug.utils import secure_filename
+        filename = secure_filename(image_file.filename)
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        image_file.save(filepath)
+        image_path = f"images/{filename}"
+
+    backend.add_news(title, content, image_path, session["user"])
+    flash("✅ News posted successfully!", "success")
+    return redirect(url_for("admin_news"))
+
+@app.route("/admin/news/delete/<int:news_id>", methods=["POST"])
+def delete_news(news_id):
+    if "user" not in session or session.get("role") != "admin":
+        return redirect("/login")
+    backend.delete_news(news_id)
+    flash("🗑️ News deleted", "info")
+    return redirect(url_for("admin_news"))
+
+@app.route("/news/<int:news_id>")
+def news_detail(news_id):
+    news_item = backend.get_news_by_id(news_id)
+    if not news_item:
+        return "❌ News not found", 404
+    return render_template("index.html", page="news_detail", news=news_item)
+
+
+
 @app.route("/")
 def home():
-    return render_template("index.html", page="home")
+    news = backend.get_news()   # ✅ fetch from DB
+    return render_template("index.html", page="home", news=news)
+
 
 @app.route("/about")
 def about():
@@ -315,7 +361,6 @@ def chat():
         print("⚠️ OpenAI chat failed, falling back to DeepSeek:", e)
 
     # --- Fallback: DeepSeek ---
-     # --- Fallback: DeepSeek ---
     try:
         import requests, os
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
