@@ -27,9 +27,13 @@
       <a href="/about" class="nav-link">About</a>
       {% if session.get("user") %}
         <a href="/calendar" class="nav-link">Calendar</a>
-        <a href="/admin/projects" class="nav-link">Projects</a>
         <a href="/upload" class="nav-link">Upload Doc</a>
         <a href="/survey" class="nav-link">Survey</a>
+    
+        {% if session.get("role") == "admin" %}
+          <a href="/admin/projects" class="nav-link">Manage Projects</a>
+        {% endif %}
+    
         <a href="/logout" class="nav-link">Logout</a>
       {% else %}
         <a href="/login" class="nav-link">Login</a>
@@ -701,6 +705,14 @@
         <form method="POST" action="/signup">
           <input type="text" name="username" placeholder="Username" required>
           <input type="password" name="password" placeholder="Password" required>
+
+          <label for="role">Select Role:</label>
+          <select name="role" required>
+            <option value="mp">MP</option>
+            <option value="senator">Senator</option>
+            <option value="admin">Admin</option>
+          </select>
+
           <button type="submit">Signup</button>
         </form>
         <p>Already have an account? <a href="/login">Login</a></p>

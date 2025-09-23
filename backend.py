@@ -18,12 +18,29 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    # Users table
+    # Create users table if not exists
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'mp'
+        )
+    """)
+
+    # ✅ Ensure role column exists (for older DBs)
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'mp'")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+    # ✅ Users table with role column
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL  -- "mp", "senator", or "admin"
         )
     """)
 
@@ -120,32 +137,38 @@ def process_survey_results(data: dict):
 
 
 
-def create_user(username, password):
-    """Register a new user with hashed password."""
+def create_user(username, password, role="mp"):
+    """Register a new user with hashed password + role (default MP)."""
     hashed = bcrypt.generate_password_hash(password).decode("utf-8")
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
+        c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+                  (username, hashed, role))
         conn.commit()
         conn.close()
         return True
     except sqlite3.IntegrityError:
         return False  # username exists
 
+
 def verify_user(username, password):
-    """Check username + password against DB."""
+    """
+    Check username + password against DB.
+    Returns the user's role if valid, otherwise None.
+    """
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT password FROM users WHERE username = ?", (username,))
+    c.execute("SELECT password, role FROM users WHERE username = ?", (username,))
     row = c.fetchone()
     conn.close()
     if row and bcrypt.check_password_hash(row[0], password):
-        return True
-    return False
+        return row[1]  # return role
+    return None
 
 
 def get_user_id(username):
+    """Fetch user_id for a given username."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT id FROM users WHERE username = ?", (username,))
@@ -326,15 +349,40 @@ def ai_extract_budget_info(text: str):
     2. If all OpenAI keys fail, fallback to DeepSeek.
     """
     prompt = f"""
-    You are a financial data analyst. Extract budget allocations for climate-related programmes
-    (Energy, Agriculture, Health, Transport, Water, and total budget).
-    Return results as a clean JSON object with numeric values only.
-    Text: {text[:3000]}
+    You are a financial data analyst. From the following budget document, extract structured data.
+
+    Return ONLY a valid JSON object with this structure:
+
+    {{
+        "Total Budget": <number>,
+        "Sectors": {{
+            "Energy": <number>,
+            "Agriculture": <number>,
+            "Health": <number>,
+            "Transport": <number>,
+            "Water": <number>
+        }},
+        "Climate Projects": [
+            {{"Programme": "PIDACC Zambezi", "2024": 123456, "2023": 98765}},
+            {{"Programme": "Irrigation Development", "2024": 456789, "2023": 345678}}
+        ]
+    }}
+
+    Rules:
+    - Extract exact numeric figures (no words, no commas).
+    - If a value is not present, use null.
+    - Do not add explanations outside the JSON.
+
+    Document text:
+    {text}
     """
+
+
+
     # --- Try OpenAI ---
     for _ in range(len(API_KEYS)):
         try:
-            client = get_openai_client()
+            client = get_client()
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -373,11 +421,23 @@ def ai_extract_budget_info(text: str):
         r = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=payload, timeout=30)
         r.raise_for_status()
         data = r.json()
-        content = data["choices"][0]["message"]["content"]
-        return json.loads(content)
+        print("DEBUG DeepSeek response:", json.dumps(data, indent=2))  # log full reply
+
+        # ✅ Safely extract reply
+        reply = data.get("choices", [{}])[0].get("message", {}).get("content")
+        if not reply:
+            return {}
+
+        # Try parsing JSON, fallback to raw string
+        try:
+            return json.loads(reply)
+        except json.JSONDecodeError:
+            print("⚠️ DeepSeek returned non-JSON:", reply[:200])
+            return {"raw_reply": reply}
     except Exception as e:
         print("❌ DeepSeek extraction failed:", e)
         return {}
+
 
 # ---- Helper: Clean numbers ----
 def clean_numeric_value(val):
@@ -395,21 +455,36 @@ def clean_numeric_value(val):
 
 # ---- Combined AI + Keyword Extraction ----
 def extract_combined_budget_info(text: str):
+    """
+    Merge AI-extracted structured budget info with keyword-based extraction.
+    Ensures important fields like Total Budget, sector allocations, adaptation, mitigation, etc. are captured.
+    """
     ai_results = ai_extract_budget_info(text) or {}
     keyword_results = extract_numbers_from_text(
         text,
         keywords=[
+            "total budget",
             "total public investment in climate initiatives",
             "percentage of national budget allocated to climate adaptation",
             "private sector investment mobilized", 
-            "energy", "agriculture", "health", "transport", "water"
+            "adaptation",
+            "mitigation",
+            "energy",
+            "agriculture",
+            "health",
+            "transport",
+            "water"
         ]
     )
 
+    # ✅ Start from AI results
     merged = ai_results.copy()
+
+    # ✅ Map fuzzy keyword matches to structured labels
     mapping = {
         "total": "Total Budget",
         "adaptation": "Adaptation",
+        "mitigation": "Mitigation",
         "public": "Public",
         "energy": "Energy",
         "agriculture": "Agriculture",
@@ -428,8 +503,10 @@ def extract_combined_budget_info(text: str):
         if mapped_key and mapped_key not in merged:
             merged[mapped_key] = v
 
+    # ✅ Ensure numbers are cleaned
     merged = {k: clean_numeric_value(v) for k, v in merged.items() if v is not None}
     return merged
+
 
 # ---- Agriculture Budget ----
 def extract_agriculture_budget(text: str):
@@ -454,39 +531,6 @@ def extract_agriculture_budget(text: str):
 
     totals = df[["2022", "2023", "2024"]].sum().to_dict()
     return df, totals
-
-# ---- Climate Programmes ----
-def extract_climate_programmes(text: str):
-    rows = []
-    climate_codes = {
-        "07": "Irrigation Development",
-        "17": "Irrigation Development Support Programme",
-        "18": "Farming Systems / SCRALA",
-        "41": "Chiansi Water Development Project",
-        "61": "Programme for Adaptation of Climate Change (PIDACC) Zambezi",
-    }
-
-    clean_text = re.sub(r"\s+", " ", text)
-
-    for code, name in climate_codes.items():
-        pattern = re.compile(rf"\b{code}\b\s+([\d,]+)\s+([\d,]+).*?([\d,]+)")
-        match = pattern.search(clean_text)
-        if match:
-            try:
-                budget2022 = float(match.group(1).replace(",", ""))
-                budget2023 = float(match.group(2).replace(",", ""))
-                budget2024 = float(match.group(3).replace(",", ""))
-            except ValueError:
-                continue
-
-            rows.append({
-                "Programme": f"{code} - {name}",
-                "2023": budget2023,
-                "2024": budget2024
-            })
-
-    df = pd.DataFrame(rows)
-    return df if not df.empty else None
 
 def extract_total_budget(text: str):
     # look for "Total" followed by digits (ignore if no number)
