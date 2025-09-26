@@ -18,7 +18,7 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-        # News table
+    # News table
     c.execute("""
         CREATE TABLE IF NOT EXISTS news (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,30 +30,13 @@ def init_db():
         )
     """)
 
-
-    # Create users table if not exists
+    # Users table (single definition)
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'mp'
-        )
-    """)
-
-    # ✅ Ensure role column exists (for older DBs)
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'mp'")
-    except sqlite3.OperationalError:
-        pass  # column already exists
-
-    # ✅ Users table with role column
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL  -- "mp", "senator", or "admin"
         )
     """)
 
@@ -98,7 +81,8 @@ def init_db():
     """)
 
     conn.commit()
-    conn.close()   # ✅ only once, after ALL tables are created
+    conn.close()
+
 
 def get_news():
     conn = sqlite3.connect(DB_PATH)
@@ -189,6 +173,43 @@ def process_survey_results(data: dict):
         "total_budget": cleaned.get("Total Budget"),
     }
     return response
+
+def prepare_graph_data(data: dict):
+    """
+    Transform extracted budget data into structures usable for frontend graphs.
+    """
+
+    graphs = {}
+
+    # --- Graph 1: Allocated figures per project ---
+    projects = data.get("Climate Projects", [])
+    graphs["projects"] = [
+        {"Programme": p["Programme"], "Allocated": sum(v for k, v in p.items() if isinstance(v, (int, float)))}
+        for p in projects
+    ]
+
+    # --- Graph 2: Programmes vs Climate Projects ---
+    total_budget = data.get("Total Budget", 0)
+    sector_total = sum(v for v in (data.get("Sectors") or {}).values() if v)
+    projects_total = sum(sum(v for k, v in p.items() if isinstance(v, (int, float))) for p in projects)
+
+    graphs["categories"] = [
+        {"Category": "Sectors", "Total": sector_total},
+        {"Category": "Climate Projects", "Total": projects_total},
+        {"Category": "Unallocated", "Total": max(total_budget - (sector_total + projects_total), 0)}
+    ]
+
+    # --- Graph 3: Yearly Comparisons (2022 vs 2023 vs 2024) ---
+    yearly_totals = {"2022": 0, "2023": 0, "2024": 0}
+    for p in projects:
+        for year in yearly_totals.keys():
+            if year in p and isinstance(p[year], (int, float)):
+                yearly_totals[year] += p[year]
+
+    graphs["yearly"] = [{"Year": int(y), "Total": yearly_totals[y]} for y in yearly_totals]
+
+    return graphs
+
 
 
 
@@ -396,12 +417,32 @@ def extract_text_from_pdf(uploaded_file, max_pages=None):
             text.append(page.get_text("text") or "")
     return "\n".join(text)
 
-# ---- AI Extraction ----
+def _extract_json_from_text(s: str):
+    """Try to find the first JSON object in a string and parse it."""
+    if not s:
+        return None
+    # find first { and last } that likely form the JSON block
+    start = s.find("{")
+    end = s.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    candidate = s[start:end+1]
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        # try minor fixes: remove code fences and trailing commas
+        candidate = re.sub(r"```json|```", "", candidate)
+        candidate = re.sub(r",\s*}", "}", candidate)
+        candidate = re.sub(r",\s*]", "]", candidate)
+        try:
+            return json.loads(candidate)
+        except Exception:
+            return None
+
 def ai_extract_budget_info(text: str):
     """
     Uses AI to analyze PDF text and extract structured budget data.
-    1. Try OpenAI (rotating keys if needed).
-    2. If all OpenAI keys fail, fallback to DeepSeek.
+    Returns a dict (may contain nested dicts/lists) or {} on failure.
     """
     prompt = f"""
     You are a financial data analyst. From the following budget document, extract structured data.
@@ -419,23 +460,20 @@ def ai_extract_budget_info(text: str):
         }},
         "Climate Projects": [
             {{"Programme": "PIDACC Zambezi", "2024": 123456, "2023": 98765}},
-            {{"Programme": "Irrigation Development", "2024": 456789, "2023": 345678}}
         ]
     }}
 
     Rules:
-    - Extract exact numeric figures (no words, no commas).
-    - If a value is not present, use null.
-    - Do not add explanations outside the JSON.
+    - Return only JSON (no surrounding explanation). If you include text wrap it away.
+    - Use numbers (no commas) for numeric fields.
+    - Use null if not present.
 
     Document text:
     {text}
     """
 
-
-
-    # --- Try OpenAI ---
-    for _ in range(len(API_KEYS)):
+    # Try OpenAI with rotation
+    for _ in range(max(1, len(API_KEYS))):
         try:
             client = get_client()
             response = client.chat.completions.create(
@@ -446,17 +484,30 @@ def ai_extract_budget_info(text: str):
                 ],
                 temperature=0
             )
-            content = response.choices[0].message["content"]
-            return json.loads(content)
+            content = None
+            # robustly extract content
+            try:
+                content = response.choices[0].message.get("content") or response.choices[0].message["content"]
+            except Exception:
+                # try older/alternate fields
+                content = getattr(response.choices[0], "text", None)
+
+            parsed = _extract_json_from_text(content or "")
+            if parsed:
+                return parsed
+            else:
+                print("⚠️ OpenAI returned text but no JSON could be extracted. Raw snippet:", (content or "")[:300])
+                # continue to fallback or next key
+                continue
         except (RateLimitError, AuthenticationError) as e:
             print("⚠️ OpenAI key failed, rotating...", e)
-            # rotate and retry
+            # rotate will be handled in get_client() on next call
             continue
         except Exception as e:
             print("⚠️ OpenAI extraction error:", e)
-            break  # break to fallback
+            break
 
-    # --- Fallback: DeepSeek ---
+    # Fallback: DeepSeek
     try:
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
         if not deepseek_key:
@@ -476,22 +527,17 @@ def ai_extract_budget_info(text: str):
         r = requests.post("https://api.deepseek.com/chat/completions", headers=headers, json=payload, timeout=30)
         r.raise_for_status()
         data = r.json()
-        print("DEBUG DeepSeek response:", json.dumps(data, indent=2))  # log full reply
-
-        # ✅ Safely extract reply
-        reply = data.get("choices", [{}])[0].get("message", {}).get("content")
-        if not reply:
-            return {}
-
-        # Try parsing JSON, fallback to raw string
-        try:
-            return json.loads(reply)
-        except json.JSONDecodeError:
-            print("⚠️ DeepSeek returned non-JSON:", reply[:200])
+        reply = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        parsed = _extract_json_from_text(reply or "")
+        if parsed:
+            return parsed
+        else:
+            print("⚠️ DeepSeek returned non-JSON or JSON not parsable. Raw reply stored.")
             return {"raw_reply": reply}
     except Exception as e:
         print("❌ DeepSeek extraction failed:", e)
         return {}
+
 
 
 # ---- Helper: Clean numbers ----
@@ -509,6 +555,23 @@ def clean_numeric_value(val):
     return None
 
 # ---- Combined AI + Keyword Extraction ----
+def _clean_recursive(obj):
+    """Recursively convert numeric-like strings into floats for dicts/lists, leave nested dicts intact."""
+    if obj is None:
+        return None
+    if isinstance(obj, (int, float)):
+        return float(obj)
+    if isinstance(obj, str):
+        return clean_numeric_value(obj)
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            out[k] = _clean_recursive(v)
+        return out
+    if isinstance(obj, list):
+        return [_clean_recursive(x) for x in obj]
+    return obj
+
 def extract_combined_budget_info(text: str):
     """
     Merge AI-extracted structured budget info with keyword-based extraction.
@@ -521,7 +584,7 @@ def extract_combined_budget_info(text: str):
             "total budget",
             "total public investment in climate initiatives",
             "percentage of national budget allocated to climate adaptation",
-            "private sector investment mobilized", 
+            "private sector investment mobilized",
             "adaptation",
             "mitigation",
             "energy",
@@ -532,34 +595,41 @@ def extract_combined_budget_info(text: str):
         ]
     )
 
-    # ✅ Start from AI results
-    merged = ai_results.copy()
+    # Start with AI results (may be nested)
+    merged = {}
 
-    # ✅ Map fuzzy keyword matches to structured labels
+    # copy ai output, cleaning recursively
+    for k, v in ai_results.items():
+        merged[k] = _clean_recursive(v)
+
+    # Map fuzzy keyword matches to structured labels (only when not present)
     mapping = {
         "total": "Total Budget",
         "adaptation": "Adaptation",
         "mitigation": "Mitigation",
         "public": "Public",
-        "energy": "Energy",
-        "agriculture": "Agriculture",
-        "health": "Health",
-        "transport": "Transport",
-        "water": "Water"
+        "energy": "Sectors",
+        "agriculture": "Sectors",
+        "health": "Sectors",
+        "transport": "Sectors",
+        "water": "Sectors"
     }
 
+    # If keywords found, inject into merged (without overwriting present data)
     for k, v in keyword_results.items():
         clean_key = k.lower().strip()
-        mapped_key = None
         for kw, label in mapping.items():
             if kw in clean_key:
-                mapped_key = label
+                if label == "Sectors":
+                    # make sure merged has nested Sectors dict
+                    merged.setdefault("Sectors", {})
+                    # use the keyword (e.g., 'energy') to assign its numeric
+                    merged["Sectors"][kw.capitalize()] = _clean_recursive(v)
+                else:
+                    if label not in merged or merged.get(label) is None:
+                        merged[label] = _clean_recursive(v)
                 break
-        if mapped_key and mapped_key not in merged:
-            merged[mapped_key] = v
 
-    # ✅ Ensure numbers are cleaned
-    merged = {k: clean_numeric_value(v) for k, v in merged.items() if v is not None}
     return merged
 
 

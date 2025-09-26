@@ -24,23 +24,27 @@
     </div>
     <div class="nav-right">
       <a href="/" class="nav-link">Home</a>
-      <a href="/about" class="nav-link">About</a>
+
       {% if session.get("user") %}
         <a href="/calendar" class="nav-link">Calendar</a>
-        <a href="/upload" class="nav-link">Upload Doc</a>
-        <a href="/survey" class="nav-link">Survey</a>
-    
+        <a href="/budget" class="nav-link">Budget</a>
+      {% endif %}
+
+      <a href="/gis-projects" class="nav-link">GIS Projects</a>
+      <a href="/atlas" class="nav-link">Atlas</a>
+
+      {% if session.get("user") %}
         {% if session.get("role") == "admin" %}
           <a href="/admin/projects" class="nav-link">Manage Projects</a>
           <a href="/admin/news" class="nav-link">Manage News</a>
         {% endif %}
-    
         <a href="/logout" class="nav-link">Logout</a>
       {% else %}
         <a href="/login" class="nav-link">Login</a>
       {% endif %}
     </div>
   </nav>
+
 
   <!-- PAGE CONTENT -->
   <div class="page-container">
@@ -70,31 +74,114 @@
         </p>
       </div>
 
-      <!-- UPDATED: About section with clickable PDF cards -->
-      <div class="section">
-        <h2>📰 About the Tool</h2>
-        <p>Learn more about the Monitoring and Accountability tool</p>
+      
+      <!-- === About CMAT (Home) — REPLACE THIS WHOLE BLOCK === -->
+      <div class="section about-cmat">
+        <div class="about-header">
+          <div>
+            <h2>ℹ️ About CMAT</h2>
+            <p class="subtle">
+              The <strong>Climate Monitoring &amp; Accountability Tool (CMAT)</strong> is an AI-enabled
+              platform by the <strong>National Assembly of Zambia (NAZ)</strong>, developed with
+              <strong>AGNES</strong>, to help Parliament and stakeholders track climate policy, budgets,
+              and project implementation.
+            </p>
+          </div>
+          <div class="badge">v1.0 • Public Beta</div>
+        </div>
 
+        <!-- Key context & objectives -->
+        <div class="grid-2">
+          <div class="card-lite">
+            <h3>📜 Background &amp; Mandate</h3>
+            <ul class="meta-list">
+              <li><strong>Standing Orders (2024)</strong> and the <strong>National Planning &amp; Budgeting Act No. 1 of 2020</strong> guide oversight.</li>
+              <li>Focus on the <strong>Ministry of Green Economy &amp; Environment</strong> and cross-government climate spending.</li>
+              <li>Alignment with <strong>Paris Agreement</strong>, <strong>NDCs</strong>, and national strategies.</li>
+            </ul>
+          </div>
+
+          <div class="card-lite">
+            <h3>🎯 What CMAT Delivers</h3>
+            <ul class="meta-list">
+              <li><strong>Budget analytics</strong> (upload PDFs + manual inputs) for rapid insights.</li>
+              <li><strong>Policy &amp; legislation tracking</strong> with configurable indicators.</li>
+              <li><strong>GIS verification</strong> of projects with location evidence.</li>
+              <li><strong>Parliamentary calendar</strong> integration for timely scrutiny.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-value">{{ news|length if news else 0 }}</div>
+            <div class="kpi-label">News &amp; Briefs</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">{{ (projects|length) if projects is defined else 0 }}</div>
+            <div class="kpi-label">GIS-Mapped Projects</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">5</div>
+            <div class="kpi-label">Core Indicators</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">24/7</div>
+            <div class="kpi-label">AI Assistance</div>
+          </div>
+        </div>
+
+        <!-- Collapsible indicator groups -->
+        <div class="grid-2">
+          <details class="card-lite" open>
+            <summary>📌 Legislative Indicators</summary>
+            <ul class="meta-list">
+              <li>Climate-related laws enacted &amp; quality of provisions</li>
+              <li>Implementation timeliness &amp; compliance</li>
+              <li>Oversight activities &amp; follow-up actions</li>
+            </ul>
+          </details>
+
+          <details class="card-lite" open>
+            <summary>💰 Financial Indicators</summary>
+            <ul class="meta-list">
+              <li>Total public investment in climate initiatives</li>
+              <li>% of budget for adaptation/mitigation</li>
+              <li>Private finance leveraged &amp; co-financing</li>
+            </ul>
+          </details>
+        </div>
+
+        <!-- Primary CTAs (routes already exist in your app) -->
+        <div class="cta-row">
+          <a href="/budget" class="btn btn-primary">Open Budget Workspace</a>
+          <a href="/gis-projects" class="btn">Browse GIS Projects</a>
+          <a href="/calendar" class="btn">View Legislative Calendar</a>
+        </div>
+
+        <!-- Reference documents (your existing cards, restyled) -->
+        <h3 class="docs-title">Reference Documents</h3>
         <div class="docs-grid">
           <a href="{{ url_for('download_file', filename='Updated-Final-Zambia-NPC-IP_Sent-to-CIF-by-MGEE_27112024.pdf') }}" target="_blank" class="doc-card">
             <div class="icon">🌍</div>
             <h3>Climate Insights</h3>
-            <p>Latest news, analysis, and developments on climate action and sustainability efforts.</p>
+            <p>Latest analysis and national submissions related to climate investment planning.</p>
           </a>
 
           <a href="{{ url_for('download_file', filename='Report of the Committee on Agriculture, Lands and Natural Resources on Carbon Markets and Trading in Zambia.pdf') }}" target="_blank" class="doc-card">
             <div class="icon">📚</div>
-            <h3>Explore Resources</h3>
-            <p>Access a repository of climate-related documents for easy reference and exploration.</p>
+            <h3>Parliamentary Reports</h3>
+            <p>Committee positions on carbon markets, trading, and oversight learnings.</p>
           </a>
 
           <a href="{{ url_for('download_file', filename='Acts No. 18 for 2024, The Green Economy and Climate Change, pdf.pdf') }}" target="_blank" class="doc-card">
             <div class="icon">🗺️</div>
-            <h3>GIS Projects</h3>
-            <p>Verify on-the-ground climate projects with our GIS tool for accurate tracking.</p>
+            <h3>Legal Framework</h3>
+            <p>Green Economy &amp; Climate Change Act (No. 18 of 2024) and related statutes.</p>
           </a>
         </div>
       </div>
+
 
       <!-- 🌍 CLIMATE CONTENT SLIDESHOW -->
       <div class="section">
@@ -335,77 +422,18 @@
 
 
 
-    {% elif page == "about" %}
+    {% elif page == "gis_projects" %}
       <div class="section">
-        <h2>ℹ️ About CMAT</h2>
-        <p>
-          The <strong>Climate Monitoring & Accountability Tool (CMAT)</strong> is an AI-enabled 
-          platform developed by the <strong>National Assembly of Zambia (NAZ)</strong> in 
-          collaboration with <strong>AGNES</strong>.
-        </p>
+        <h2>🗺️ GIS-Enabled National Climate Projects</h2>
+        <p>Explore featured projects and verify locations via the embedded maps.</p>
 
-        <h3>📜 Background & Context</h3>
-        <ul>
-          <li>Developed in line with <strong>NAZ Standing Orders (2024)</strong> and the <strong>National Planning and Budgeting Act No. 1 of 2020</strong>.</li>
-          <li>Focuses on oversight of the <strong>Ministry of Green Economy and Environment</strong>.</li>
-          <li>Supports alignment with international commitments (Paris Agreement, NDCs).</li>
-        </ul>
-
-        <h3>🎯 Objectives</h3>
-        <ol>
-          <li>Track climate-related laws, budgets, and strategies.</li>
-          <li>Strengthen transparency in climate finance.</li>
-          <li>Promote accountability in project implementation.</li>
-          <li>Enhance public engagement and awareness.</li>
-        </ol>
-      </div>
-
-      <div class="section">
-        <h3>📊 Indicators for CMAT</h3>
-        <p>Indicators are grouped under the following categories:</p>
-
-        <details>
-          <summary>📌 Legislative</summary>
-          <ul>
-            <li>Number of Climate-Related Laws Enacted</li>
-            <li>Quality of Climate Legislation</li>
-            <li>Timeliness of Law Implementation</li>
-          </ul>
-        </details>
-
-        <details>
-          <summary>📌 Financial</summary>
-          <ul>
-            <li>Total Public Investment in Climate Initiatives</li>
-            <li>Budget % Allocated to Climate Adaptation</li>
-            <li>Private Sector Investment Mobilized</li>
-          </ul>
-        </details>
-      </div>
-
-      <div class="section">
-        <h3>📂 Reports & Resources</h3>
-        <ul>
-          <li>📘 National Climate Indicators Report (2025) <em>(Coming Soon)</em></li>
-          <li>📗 Annual Budget Oversight Report <em>(Draft in progress)</em></li>
-          <li>📄 Public Awareness Briefs (2025)</li>
-        </ul>
-      </div>
-
-      <!-- ✅ FEATURED PROJECTS WITH IMAGE + DETAILS + MAP -->
-      <div class="section">
-        <h3>🏷 Featured National Climate Projects</h3>
-
-        <!-- Static Grid Layout -->
         <div class="projects-container">
           {% for project in projects %}
             <div class="project-card">
-              <!-- Project Image -->
               <img src="{{ url_for('static', filename=project.image or 'images/default.jpg') }}" 
                   alt="{{ project.title }}" 
                   class="project-img">
 
-              <!-- Project Details -->
               <div class="project-details">
                 <h3>{{ project.title }}</h3>
                 <p>{{ project.description }}</p>
@@ -416,7 +444,6 @@
                 <p><strong>Completion:</strong> {{ project.completion_percentage }}%</p>
               </div>
 
-              <!-- Embedded Map -->
               <div id="map-{{ project.id }}" class="project-map"></div>
             </div>
           {% endfor %}
@@ -424,21 +451,17 @@
       </div>
 
       <script>
-        const projects = {{ projects|tojson }};
-
-        projects.forEach(p => {
+        const projectsGIS = {{ projects|tojson }};
+        projectsGIS.forEach(p => {
           if (p.latitude && p.longitude) {
             const map = L.map(`map-${p.id}`).setView([p.latitude, p.longitude], 10);
-
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
-
-            L.marker([p.latitude, p.longitude])
-              .addTo(map)
+            L.marker([p.latitude, p.longitude]).addTo(map)
               .bindPopup(`<b>${p.title}</b><br>${p.description}`);
           } else {
-            console.warn(`⚠️ No valid coordinates for project: ${p.title}`);
+            console.warn(`Project ${p.id} is missing location data.`);
           }
         });
       </script>
@@ -605,62 +628,51 @@
       </script>
 
 
-    {% elif page == "upload" %}
+    {% elif page == "budget" %}
       <div class="section">
-        <h2>📑 Upload Document</h2>
-        <p>Upload a budget or climate policy PDF. The AI will extract and analyze key allocations.</p>
-        <form id="uploadForm" enctype="multipart/form-data">
+        <h2>💼 Budget Workspace</h2>
+        <p>Upload financial PDFs for AI extraction and enter manual survey values. Both feed your budget analytics.</p>
+      </div>
+
+      <!-- === Upload & Analyze === -->
+      <div class="section">
+        <h3>📑 Upload and Analyze Financial Document</h3>
+        <form id="uploadForm">
           <input type="file" name="pdf" accept="application/pdf" required>
           <button type="submit">Upload & Analyze</button>
         </form>
-      </div>
-
-      <div class="section">
-        <h3>Extracted Budget Info</h3>
-        <pre id="budgetInfo"></pre>
-      </div>
-
-      <div class="section">
-        <h3>Agriculture Budget Chart</h3>
-        <div id="agriChart"></div>
-      </div>
-
-      <div class="section">
-        <h3>Climate Programmes</h3>
-        <div id="climateChart"></div>
+        <div id="results"></div>
       </div>
 
       <script>
-        document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+        document.getElementById("uploadForm").addEventListener("submit", async function(e) {
           e.preventDefault();
-          const formData = new FormData(e.target);
-
-          const res = await fetch("/upload", { method: "POST", body: formData });
-          const data = await res.json();
-
-          document.getElementById("budgetInfo").innerText = JSON.stringify(data.budget_info, null, 2);
-
-          if (data.agriculture) {
-            const x = data.agriculture.map(d => d.Programme);
-            const y = data.agriculture.map(d => d["2024"]);
-            Plotly.newPlot("agriChart", [{
-              x, y, type: "bar", text: y, textposition: "outside"
-            }], { title: "Agriculture Budget 2024" });
-          }
-
-          if (data.climate_programmes) {
-            const x = data.climate_programmes.map(d => d.Programme);
-            const y = data.climate_programmes.map(d => d["2024"]);
-            Plotly.newPlot("climateChart", [{
-              x, y, type: "bar", text: y, textposition: "outside"
-            }], { title: "Climate Programmes 2024" });
-          }
+          const formData = new FormData(this);
+          fetch("/upload/analyze", {
+            method: "POST",
+            body: formData
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.error) {
+              document.getElementById("results").innerHTML = "⚠️ " + data.error;
+              return;
+            }
+            document.getElementById("results").innerHTML = `
+              <h3>✅ Analysis Complete</h3>
+              <pre>${JSON.stringify(data.graphs || data.raw || data, null, 2)}</pre>
+            `;
+          })
+          .catch(err => {
+            console.error(err);
+            document.getElementById("results").innerHTML = "⚠️ Error analyzing document.";
+          });
         });
       </script>
 
-    {% elif page == "survey" %}
+      <!-- === Manual Survey === -->
       <div class="section">
-        <h2>📝 Manual Survey Entry</h2>
+        <h3>📝 Manual Survey Entry</h3>
         <form id="survey-form" class="survey-grid">
           {% for category, inds in indicators.items() %}
             <h3>{{ category }}</h3>
@@ -668,15 +680,14 @@
               <div class="survey-field">
                 <label>{{ ind }}</label>
                 <input type="number" step="any" name="{{ ind }}"
-                   value="{{ survey_data.get(ind, '') }}"
-                   class="survey-input">
+                      value="{{ survey_data.get(ind, '') }}"
+                      class="survey-input">
               </div>
             {% endfor %}
           {% endfor %}
           <button type="submit" class="survey-btn">💾 Save Survey</button>
         </form>
 
-        <!-- Results BELOW the form -->
         <div class="section results-section">
           <h3>📊 Survey Results</h3>
           <div id="surveyChart"></div>
@@ -723,8 +734,11 @@
         }
       </script>
 
-
-
+    {% elif page == "atlas" %}
+      <div class="section">
+        <h2>🧭 Atlas</h2>
+        <p>A consolidated, browsable atlas of climate indicators, layers, and documents. (Content coming soon.)</p>
+      </div>
 
 
 
